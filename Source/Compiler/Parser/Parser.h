@@ -1,0 +1,16 @@
+//
+// Created by spaceeye on 28.10.22.
+//
+
+#ifndef ANOTHERPROGRAMMINGLANGUAGE_PARSER_H
+#define ANOTHERPROGRAMMINGLANGUAGE_PARSER_H
+
+
+class Parser {
+
+public:
+
+};
+
+
+#endif //ANOTHERPROGRAMMINGLANGUAGE_PARSER_H

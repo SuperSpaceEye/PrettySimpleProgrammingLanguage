@@ -7,7 +7,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "Source/Compiler/Compiler.h"
+#include "Source/Compiler/Compiler/Compiler.h"
 
 std::vector<std::string> open_files(const std::vector<std::string>& file_paths);
 static std::vector<std::string> read_arguments(int argc, char *argv[]);

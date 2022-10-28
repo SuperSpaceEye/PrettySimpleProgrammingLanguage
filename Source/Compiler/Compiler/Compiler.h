@@ -9,7 +9,7 @@
 #include <string>
 
 #include "ByteCode.h"
-#include "Transpiler/Transpiler.h"
+#include "../Transpiler/Transpiler.h"
 
 class Compiler {
 public:
