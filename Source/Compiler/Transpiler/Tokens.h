@@ -10,8 +10,8 @@
 #include <array>
 #include <cstring>
 
-const int num_tokens = 40;
-const int num_words = 38;
+const int num_tokens = 41;
+const int num_words = 39;
 
 enum class Token {
     FUNCTION,
@@ -19,6 +19,7 @@ enum class Token {
     RETURN,
 
     VOID,
+    ARRAY,
     INT,
     UINT,
     FLOAT,
@@ -72,6 +73,7 @@ const std::vector<std::string> reserved_tokens {
     "return",
 
     "void",
+    "array",
     "int",
     "uint",
     "float",

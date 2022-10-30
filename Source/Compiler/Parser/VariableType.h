@@ -1,0 +1,16 @@
+//
+// Created by spaceeye on 29.10.22.
+//
+
+#ifndef ANOTHERPROGRAMMINGLANGUAGE_VARIABLETYPE_H
+#define ANOTHERPROGRAMMINGLANGUAGE_VARIABLETYPE_H
+
+enum class VariableType {
+    VOID,
+    INT,
+    UINT,
+    FLOAT,
+    ARRAY
+};
+
+#endif //ANOTHERPROGRAMMINGLANGUAGE_VARIABLETYPE_H

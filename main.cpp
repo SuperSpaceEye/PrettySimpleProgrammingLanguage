@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    auto code = Compiler::compile(data);
+    auto code = Compiler::compile(data, true);
 
     return 0;
 }
