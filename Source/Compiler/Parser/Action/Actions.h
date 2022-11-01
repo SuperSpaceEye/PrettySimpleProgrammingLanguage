@@ -2,8 +2,8 @@
 // Created by spaceeye on 29.10.22.
 //
 
-#ifndef ANOTHERPROGRAMMINGLANGUAGE_BASEACTION_H
-#define ANOTHERPROGRAMMINGLANGUAGE_BASEACTION_H
+#ifndef ANOTHERPROGRAMMINGLANGUAGE_ACTIONS_H
+#define ANOTHERPROGRAMMINGLANGUAGE_ACTIONS_H
 
 #include <vector>
 #include "OperationType.h"
@@ -37,4 +37,9 @@ struct Variable: public BaseAction {
     bool reference = false;
 };
 
-#endif //ANOTHERPROGRAMMINGLANGUAGE_BASEACTION_H
+struct ArrayVariable: public Variable {
+    //if the type is array of arrays of ... of type.
+    std::vector<VariableType> types;
+};
+
+#endif //ANOTHERPROGRAMMINGLANGUAGE_ACTIONS_H

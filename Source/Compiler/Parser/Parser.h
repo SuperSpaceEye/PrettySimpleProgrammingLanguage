@@ -9,7 +9,7 @@
 #include <exception>
 
 #include "../Transpiler/Transpiler.h"
-#include "Action/BaseAction.h"
+#include "Action/Actions.h"
 
 struct ASTCreationResult {
     std::vector<std::shared_ptr<BaseAction>> function_roots;
@@ -42,7 +42,10 @@ class Parser {
                          ASTCreationResult &to_return, IdRegister &reg, std::shared_ptr<BaseAction> &root,
                          int begin_num, int end_num);
 
-    static void check_token_is_valid_argument(Token token);
+    static void check_token_is_valid_argument(Token token, int &i);
+
+    static VariableType convert_token_type(Token token);
+    static int get_id(const std::vector<Token> &tokens, int & i);
 
 public:
     static ASTCreationResult create_ast(TranspilerResult & t_result);

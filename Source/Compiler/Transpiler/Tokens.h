@@ -10,11 +10,12 @@
 #include <array>
 #include <cstring>
 
-const int num_tokens = 41;
-const int num_words = 39;
+const int num_tokens = 43;
+const int num_words = 41;
 
 enum class Token {
     FUNCTION,
+    VAR,
     INLINE,
     RETURN,
 
@@ -58,6 +59,7 @@ enum class Token {
     BEGIN_LOGIC_BLOCK,
     END_LOGIC_BLOCK,
 
+    REF,
     END_COMMAND,
     COMMENT,
     COMMA,
@@ -69,6 +71,7 @@ enum class Token {
 
 const std::vector<std::string> reserved_tokens {
     "fn",
+    "var",
     "inline",
     "return",
 
@@ -95,7 +98,7 @@ const std::vector<std::string> reserved_tokens {
     "++",
     "--",
 
-    "&",
+    "&&",
     "||",
     "==",
     "!=",
@@ -112,12 +115,14 @@ const std::vector<std::string> reserved_tokens {
     "{",
     "}",
 
+    "&",
     ";",
     "#",
     ","
 };
 
 const std::vector<std::pair<std::string, Token>> reserved_two_char_logic_tokens {
+        {"&&", Token::AND},
         {"||", Token::OR},
         {"==", Token::EQUALS},
         {"!=", Token::NOT_EQUALS},
@@ -138,7 +143,7 @@ const std::vector<std::pair<std::string, Token>> reserved_one_char_logic_tokens 
         {"-", Token::SUB},
         {"*", Token::MULT},
         {"/", Token::DIV},
-        {"&", Token::AND},
+        {"&", Token::REF},
         {"!", Token::NOT},
         {">", Token::MORE},
         {"<", Token::LESS},
