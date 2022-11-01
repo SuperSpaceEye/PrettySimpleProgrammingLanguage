@@ -68,16 +68,17 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                 if (tokens[++i] == Token::ARRAY) {} else {
                     auto var_type = convert_token_type(tokens[i]);
 
-                    //TODO
-                    if (tokens[++i] != Token::REF) {} else {--i;}
+                    bool is_ref = false;
+                    if (tokens[++i] != Token::REF) {is_ref = true;} else {--i;}
 
                     auto var_id = get_id(tokens, i);
                     reg.register_variable(var_id);
 
-                    //TODO
-                    auto new_root = std::make_shared<Variable>();
+                    auto new_root = std::make_shared<Variable>(Variable{BaseAction{ActionType::Variable,
+                                                                                   root.get()},
+                                                                        var_type, var_id, true, is_ref});
                 }
-                break
+                break;
             case Token::RETURN:
                 if (logic_indentation == 0) {throw std::logic_error{"Invalid token"};}
                 break;
@@ -145,7 +146,13 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                 break;
             case Token::COMMA:
                 break;
-            case Token::UNK_WORD:
+            case Token::UNK_WORD: {
+                //TODO make logic for x, y, z = array_output_func();
+
+                if (try_process_assignment_expr(tokens, i, root)) { continue;}
+                if (try_process_inc_dec_expr(tokens, i, root)) { continue;}
+                if (try_process_math_or_logic_expr(tokens, i, root)) { continue;}
+            }
                 break;
             case Token::NUMBER:
                 break;
@@ -193,6 +200,69 @@ void Parser::check_token_is_valid_argument(Token token, int &i) {
             break;
         default:
             throw std::logic_error{"Invalid function argument declaration."};
+    }
+}
+
+bool Parser::is_assignment_expression(const std::vector<Token> &tokens, int &i) {
+    switch (tokens[i + 2]) {
+        case Token::ASGN:
+        case Token::ADD_ASGN:
+        case Token::SUB_ASGN:
+        case Token::MULT_ASGN:
+        case Token::DIV_ASGN:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Parser::is_inc_dec_expression(const std::vector<Token> &tokens, int &i) {
+    switch (tokens[i + 2]) {
+        case Token::INC:
+        case Token::DEC:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool Parser::is_math_or_logic_expr(const std::vector<Token> &tokens, int i) {
+    int logic_indentation = 0;
+
+    while (true) {
+        if (logic_indentation == 0 && tokens[i] == Token::RIGHT_CIRCLE_BRACKET) { break;}
+        if (tokens[i] == Token::RIGHT_CIRCLE_BRACKET) {--logic_indentation; ++i;continue;}
+        if (tokens[i] == Token::LEFT_CIRCLE_BRACKET) {++logic_indentation; ++i; continue;}
+
+        if (tokens[i] == Token::UNK_WORD) {i+=2; continue;}
+        if (is_math_or_logic_token(tokens[i])) {++i; continue;}
+
+        return false;
+    }
+    return true;
+}
+
+bool Parser::is_math_or_logic_token(Token token) {
+    switch (token) {
+        case Token::ADD:
+        case Token::SUB:
+        case Token::MULT:
+        case Token::DIV:
+        case Token::INC:
+        case Token::DEC:
+        case Token::AND:
+        case Token::OR:
+        case Token::EQUALS:
+        case Token::NOT_EQUALS:
+        case Token::NOT:
+        case Token::MORE_OR_EQUAL:
+        case Token::LESS_OR_EQUAL:
+        case Token::MORE:
+        case Token::LESS:
+        case Token::NUMBER:
+            return true;
+        default:
+            return false;
     }
 }
 

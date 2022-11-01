@@ -47,6 +47,16 @@ class Parser {
     static VariableType convert_token_type(Token token);
     static int get_id(const std::vector<Token> &tokens, int & i);
 
+    static bool try_process_inc_dec_expr(const std::vector<Token> & tokens, int & i, std::shared_ptr<BaseAction> & root);
+    static bool try_process_assignment_expr(const std::vector<Token> & tokens, int & i, std::shared_ptr<BaseAction> & root);
+    static bool try_process_math_or_logic_expr(const std::vector<Token> & tokens, int & i, std::shared_ptr<BaseAction> & root);
+
+    static bool is_inc_dec_expression(const std::vector<Token> & tokens, int & i);
+    static bool is_assignment_expression(const std::vector<Token> & tokens, int & i);
+    static bool is_math_or_logic_expr(const std::vector<Token> & tokens, int i);
+
+    static bool is_math_or_logic_token(Token token);
+
 public:
     static ASTCreationResult create_ast(TranspilerResult & t_result);
     static ActionTreeResult create_action_tree(ASTCreationResult & ast_result);
