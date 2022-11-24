@@ -7,12 +7,16 @@
 
 enum class ActionType {
     NoType,
+    EndAction,
     Variable,
     FunctionCall,
     FunctionDeclaration,
     ForLoop,
     WhileLoop,
-    IfStatement
+    IfStatement,
+    StartLogicBlock,
+    EndLogicBlock,
+    NumericConst,
 };
 
 enum class FunctionType {

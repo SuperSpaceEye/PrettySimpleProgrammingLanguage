@@ -159,14 +159,14 @@ int WordRegister::register_word(std::string &word) {
     if (word.empty()) {throw "bad";}
     for (int i = 0; i < names.size(); i++) {
         if (names[i] == word) {
-            return i + num_tokens;
+            return i;
         }
     }
 
     names.emplace_back(word);
-    return names.size() - 1 + num_tokens;
+    return names.size() - 1;
 }
 
 std::string WordRegister::get_word(Token token) {
-    return names[(int)token - num_tokens];
+    return names[(int)token];
 }

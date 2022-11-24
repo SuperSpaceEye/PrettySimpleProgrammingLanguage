@@ -9,14 +9,29 @@
 #fn void second_wacky_Function(int a, uint b, float c, int d, float e, float & result, int num) {for(int i=0;i<num;i++){result*=(a+b)*c+d/e;}}
 
 fn void main() {
-    var int a = -10;
+    #var int a = -10;
     #uint b = 20;
     #float c = 30.543;
-    var int d=40;
+    #var int d=40;
     #float e=-50;
     #float result;
 
     #result=wacky_function(a, b, c, d, e, 10); #result should be 3040
     #second_wacky_Function(a, b, c, d, e, result, result/58.4) #result should be 18880.8
-    int c = a + d;
+    #int c = a + d;
+
+
+    var int a;
+    var int b;
+    var int c;
+
+    #a = 10;
+    #b = 20;
+    #c = a + b
+    #c = c * b
+
+    asgn(a, 10);
+    asgn(b, 20);
+    asgn(c, add(a, b));
+    asgn(c, mul(c, b));
 }

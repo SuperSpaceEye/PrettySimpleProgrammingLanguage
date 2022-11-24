@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     //TODO
     auto arguments = read_arguments(argc, argv);
 
-    auto data = open_files(std::vector<std::string>({"/home/spaceeye/CLionProjects/AnotherProgrammingLanguage/test.apl"}));
+    auto data = open_files(std::vector<std::string>({"/home/spaceeye/CLionProjects/AnotherProgrammingLanguage/test.pspl"}));
 
     if (data.empty()) {
         std::cout << "No files detected. Aborting.";

@@ -11,8 +11,7 @@
 
 struct BaseAction {
     ActionType act_type;
-    BaseAction * left_action = nullptr;
-    BaseAction * right_action = nullptr;
+    std::shared_ptr<BaseAction> next_action = nullptr;
 };
 
 //access through dynamic cast
@@ -20,14 +19,15 @@ struct FunctionCallAction: public BaseAction {
     FunctionType fn_type;
     int fn_id;
     VariableType return_type;
-    std::vector<BaseAction*> arguments;
+    std::vector<std::shared_ptr<BaseAction>> arguments;
 };
 
 struct FunctionDeclaration: public BaseAction {
     int fn_id;
     bool is_inline;
     VariableType return_type;
-    std::vector<std::pair<VariableType, int>> arguments;
+    //type, is_ref, id
+    std::vector<std::tuple<VariableType, bool, int>> arguments;
 };
 
 struct Variable: public BaseAction {
@@ -35,6 +35,12 @@ struct Variable: public BaseAction {
     int var_id;
     bool is_declaration = false;
     bool reference = false;
+};
+
+struct NumericConst: public BaseAction {
+    VariableType type;
+    //Not actual type, just a 4 byte space to represent it.
+    uint32_t value;
 };
 
 struct ArrayVariable: public Variable {

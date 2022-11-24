@@ -10,7 +10,8 @@ enum class VariableType {
     INT,
     UINT,
     FLOAT,
-    ARRAY
+    ARRAY,
+    STRING
 };
 
 #endif //ANOTHERPROGRAMMINGLANGUAGE_VARIABLETYPE_H
