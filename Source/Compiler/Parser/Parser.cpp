@@ -83,7 +83,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                     auto var_id = get_id(tokens, i);
                     reg.register_variable(var_id);
 
-                    temp_root = std::make_shared<Variable>(Variable{BaseAction{ActionType::Variable, root},
+                    temp_root = std::make_shared<Variable>(Variable{BaseAction{ActionType::Variable},
                                                                         var_type, var_id, true, is_ref});
                     root->next_action = temp_root;
                     root = temp_root;
@@ -166,8 +166,33 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
             case Token::UNK_WORD: {
                 //TODO make logic for x, y, z = array_output_func();
 
-                if (reg.check_function(int(tokens[++i]))) {
+                auto id = (int)tokens[++i];
 
+                if (reg.check_function(id)) {
+                    if (reg.is_builtin_fn(id)) {
+                        auto bfn = reg.get_builtin(id);
+
+                        //var type, is_reference, var id
+                        std::vector<std::shared_ptr<BaseAction>> arguments;
+
+                        if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration."};}
+
+                        while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
+                            ;
+                        }
+
+                        auto new_root = std::make_shared<FunctionCallAction>(FunctionCallAction{
+                                                                       BaseAction{ActionType::FunctionCall},
+                                                                       FunctionType::BuiltinFunction,
+                                                                       bfn.first,
+                                                                       id,
+                                                                       std::get<1>(bfn.second),
+                                                                       arguments});
+                        root->next_action = new_root;
+                        root = new_root;
+                    } else {
+
+                    }
                     continue;
                 }
 
@@ -359,9 +384,29 @@ bool IdRegister::check_variable(int id) {
     throw std::logic_error{"Variable with id wasn't declared."};
 }
 
+bool IdRegister::is_builtin_fn(int id) {
+    for (auto item: builtins) {
+        if (item == id) {
+            return true;
+        }
+    }
+    return false;
+}
 
-
-
+std::pair<int, const std::tuple<std::string, VariableType, std::vector<std::pair<VariableType, bool>>>&>
+IdRegister::get_builtin(int id) {
+    for (auto & item: function_ids) {
+        if (item.first == id) {
+            for (int i = 0; i < builtin_functions_id_names.size(); i++) {
+                auto & bitem = builtin_functions_id_names[i];
+                if (std::get<0>(bitem) == item.second) {
+                    return {i, builtin_functions_id_names[i]};
+                }
+            }
+        }
+    }
+    throw std::logic_error("shouldn't happen");
+}
 
 
 std::string get_string_type(VariableType type) {
@@ -372,6 +417,7 @@ std::string get_string_type(VariableType type) {
         case VariableType::FLOAT:  return "float";
         case VariableType::ARRAY:  return "array";
         case VariableType::STRING: return "string";
+        case VariableType::B_ANY:  return "any type(checks should be implemented by dev)";
         default: throw std::logic_error("not implemented type");
     }
 }
@@ -384,48 +430,66 @@ std::string pi(int indentation) {
     return buff;
 }
 
-void display_variable() {
-
+void display_variable(BaseAction *root, int indentation, IdRegister &reg) {
+    auto & var_root = *static_cast<Variable*>(root);
+    std::cout << pi(indentation) << get_string_type(var_root.var_type) << " "
+    << reg.id_to_string(var_root.var_id) << " "
+    << (var_root.is_declaration ? "decl ": "") << (var_root.reference ? "ref\n": "\n");
 }
 
-void display_root(BaseAction* root, int indentation) {
+void display_root(BaseAction *root, int indentation, IdRegister &reg) {
     if (root == nullptr) { return;}
     switch (root->act_type) {
         case ActionType::NoType: {
             std::cout << pi(indentation) << "!!!no type\n";
         }
+            break;
         case ActionType::EndAction: {
 
         }
+            break;
         case ActionType::Variable: {
-
+            display_variable(root, indentation, reg);
         }
+            break;
         case ActionType::FunctionCall: {
-
+            auto & fnc = *static_cast<FunctionCallAction*>(root);
+            std::cout << pi(indentation) << "Call of " << reg.id_to_string(fnc.name_id)
+            << " returns " << get_string_type(fnc.return_type) << " type " <<
+            (fnc.fn_type == FunctionType::BuiltinFunction ? "\"builtin\" ": "\"user declared\" ")
+            << "\n";
         }
+            break;
         case ActionType::FunctionDeclaration: {
 
         }
+            break;
         case ActionType::ForLoop: {
 
         }
+            break;
         case ActionType::WhileLoop: {
 
         }
+            break;
         case ActionType::IfStatement: {
 
         }
+            break;
         case ActionType::StartLogicBlock: {
 
         }
+            break;
         case ActionType::EndLogicBlock: {
 
         }
+            break;
         case ActionType::NumericConst: {
 
         }
+            break;
     }
-    display_root(root->next_action.get(), indentation);
+    display_root(root->next_action.get(), indentation, reg);
 }
 
 void Parser::show_ast(ASTCreationResult &ast_result, IdRegister &id_reg) {
@@ -435,13 +499,15 @@ void Parser::show_ast(ASTCreationResult &ast_result, IdRegister &id_reg) {
         //TODO !!!!
         root = root.get()->next_action;
         auto & fn_dec = *static_cast<FunctionDeclaration*>(root.get());
-        std::cout << "Declaration " << id_reg.id_to_string(fn_dec.fn_id) << "\n";
-        std::cout << "Arguments " << fn_dec.arguments.size() << ":";
+        std::cout << "Declaration " << (fn_dec.is_inline ? "inline ": "")
+        << id_reg.id_to_string(fn_dec.fn_id) << " returns " << get_string_type(fn_dec.return_type)
+        << " arguments " << fn_dec.arguments.size() << ":";
         for (auto & arg: fn_dec.arguments) {
-            std::cout << "\n  " << get_string_type(std::get<0>(arg)) << " ";
+            std::cout << "  " << get_string_type(std::get<0>(arg)) << " ";
             std::cout << (std::get<1>(arg) ? "is_ref" : "") << " ";
-            std::cout << id_reg.id_to_string(std::get<2>(arg)) << "\n";
+            std::cout << id_reg.id_to_string(std::get<2>(arg)) << " |";
         }
-        display_root(root.get()->next_action.get(), indentation);
+        std::cout << "\n\n";
+        display_root(root.get()->next_action.get(), indentation + 2, id_reg);
     }
 }

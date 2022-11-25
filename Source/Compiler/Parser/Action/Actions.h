@@ -18,6 +18,7 @@ struct BaseAction {
 struct FunctionCallAction: public BaseAction {
     FunctionType fn_type;
     int fn_id;
+    int name_id;
     VariableType return_type;
     std::vector<std::shared_ptr<BaseAction>> arguments;
 };

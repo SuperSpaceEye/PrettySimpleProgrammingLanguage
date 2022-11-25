@@ -7,6 +7,7 @@
 
 enum class VariableType {
     VOID,
+    B_ANY,
     INT,
     UINT,
     FLOAT,

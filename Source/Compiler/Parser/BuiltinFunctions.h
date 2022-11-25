@@ -44,36 +44,34 @@ enum class BuiltinIDS{
     __COUNT,
 };
 
-const std::vector<std::string> builtin_functions_id_names {
-        //TEMP FUNCTIONS BEFORE I IMPLEMENT PROPER ALGEBRAIC FUNCTIONS
-        "asgn",
-        "add",
-        "sub",
-        "mul",
-        "div",
+//name, return type, arguments (type, ref)
+const std::vector<std::tuple<std::string, VariableType, std::vector<std::pair<VariableType, bool>>>> builtin_functions_id_names {
+//        TEMP FUNCTIONS BEFORE I IMPLEMENT PROPER ALGEBRAIC FUNCTIONS
+        {"asgn", VariableType::VOID, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"add", VariableType::B_ANY, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"sub", VariableType::B_ANY, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"mul", VariableType::B_ANY, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"div", VariableType::B_ANY, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
 
-        "asgn_add",
-        "sub_add",
-        "mul_add",
-        "div_add",
+        {"asgn_add", VariableType::VOID, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"sub_add", VariableType::VOID, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"mul_add", VariableType::VOID, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"div_add", VariableType::VOID, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
 
-        "inc",
-        "dec",
-
-        "and",
-        "or",
-        "eq",
-        "not_eq",
-        "not",
-        "more_eq",
-        "less_eq",
-        "more",
-        "less",
-        //END OF TEMP FUNCTIONS
-        "print",
-        "to_int",
-        "to_uint",
-        "to_float"
+        {"and", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"or", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"eq", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"not_eq", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"not", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"more_eq", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"less_eq", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"more", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+        {"less", VariableType::INT, {{VariableType::B_ANY, true}, {VariableType::B_ANY, true}}},
+//        END OF TEMP FUNCTIONS
+        {"print", VariableType::VOID, {{VariableType::STRING, true}}},
+        {"to_int", VariableType::INT, {{VariableType::B_ANY, true}}},
+        {"to_uint", VariableType::UINT, {{VariableType::B_ANY, true}}},
+        {"to_float", VariableType::FLOAT, {{VariableType::B_ANY, true}}},
 
 };
 
