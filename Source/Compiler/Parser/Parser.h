@@ -25,7 +25,7 @@ struct ActionTreeResult {
 
 class IdRegister {
 public:
-    std::vector<std::pair<int, std::string>> function_ids;
+    std::vector<std::tuple<int, std::string, FunctionDeclaration*>> function_ids;
     std::vector<std::pair<int, std::string>> variable_ids;
     std::vector<int> builtins;
     WordRegister & wreg;
@@ -35,15 +35,17 @@ public:
             auto & item = wreg.names[i];
             for (auto & bitem: builtin_functions_id_names) {
                 if (std::get<0>(bitem) == item) {
-                    function_ids.emplace_back(i, std::get<0>(bitem));
+                    function_ids.emplace_back(i, std::get<0>(bitem), nullptr);
                     builtins.emplace_back(i);
                 }
             }
         }
     };
 
-    void register_function(int id);
+    void register_function(int id, FunctionDeclaration *fn_dec);
     void register_variable(int id);
+
+    bool check_exists(int id);
 
     bool check_function(int id);
     bool check_variable(int id);
@@ -51,10 +53,11 @@ public:
     bool is_builtin_fn(int id);
 
     std::pair<int, const std::tuple<std::string, VariableType, std::vector<std::pair<VariableType, bool>>>&> get_builtin(int id);
+    FunctionDeclaration * get_user_def_fn(int id);
 
     std::string id_to_string(int id) {
-        for (auto reg: function_ids) {if (reg.first == id) { return "fn " + reg.second;}}
-        for (auto reg: variable_ids) {if (reg.first == id) { return "var " + reg.second;}}
+        for (auto reg: function_ids) {if (std::get<0>(reg) == id) { return "fn \"" + std::get<1>(reg) + "\"";}}
+        for (auto reg: variable_ids) {if (reg.first == id) { return "var \"" + reg.second + "\"";}}
         return "unknown id";
     }
 };
@@ -69,13 +72,6 @@ class Parser {
 
     static VariableType convert_token_type(Token token);
     static int get_id(const std::vector<Token> &tokens, int & i);
-
-    static std::pair<int, bool> is_declared_function(const std::vector<Token> & tokens, int & i);
-    static std::pair<int, bool> is_declared_variable(const std::vector<Token> & tokens, int & i);
-
-    static bool try_process_inc_dec_expr(const std::vector<Token> & tokens, int & i, std::shared_ptr<BaseAction> & root);
-    static bool try_process_builtin_expression(const std::vector<Token> & tokens, int & i, std::shared_ptr<BaseAction> & root);
-    static bool try_process_math_or_logic_expr(const std::vector<Token> & tokens, int & i, std::shared_ptr<BaseAction> & root);
 
     static bool is_inc_dec_expression(const std::vector<Token> & tokens, int & i);
     static bool is_assignment_expression(const std::vector<Token> & tokens, int & i);

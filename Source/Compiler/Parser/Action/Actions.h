@@ -23,6 +23,10 @@ struct FunctionCallAction: public BaseAction {
     std::vector<std::shared_ptr<BaseAction>> arguments;
 };
 
+struct ReturnCall: public BaseAction {
+    std::shared_ptr<BaseAction> argument;
+};
+
 struct FunctionDeclaration: public BaseAction {
     int fn_id;
     bool is_inline;

@@ -8,6 +8,10 @@
 
 #fn void second_wacky_Function(int a, uint b, float c, int d, float e, float & result, int num) {for(int i=0;i<num;i++){result*=(a+b)*c+d/e;}}
 
+fn int user_add(int a, int b, int c) {
+    return(add(add(a, b), c));
+}
+
 fn void main() {
     #var int a = -10;
     #uint b = 20;
@@ -34,4 +38,5 @@ fn void main() {
     asgn(b, 20);
     asgn(c, add(a, b));
     asgn(c, mul(c, b));
+    asgn(c, user_add(a, b, c))
 }
