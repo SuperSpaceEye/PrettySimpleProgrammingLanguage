@@ -8,7 +8,8 @@
 enum class ActionType {
     NoType,
     EndAction,
-    Variable,
+    VariableDeclaration,
+    VariableCall,
     FunctionCall,
     FunctionDeclaration,
     ForLoop,

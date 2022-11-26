@@ -31,11 +31,15 @@ struct FunctionDeclaration: public BaseAction {
     std::vector<std::tuple<VariableType, bool, int>> arguments;
 };
 
-struct Variable: public BaseAction {
+struct VariableDeclaration: public BaseAction {
     VariableType var_type;
     int var_id;
     bool is_declaration = false;
     bool reference = false;
+};
+
+struct VariableCall: public BaseAction {
+    int var_id;
 };
 
 struct NumericConst: public BaseAction {
@@ -44,7 +48,7 @@ struct NumericConst: public BaseAction {
     uint32_t value;
 };
 
-struct ArrayVariable: public Variable {
+struct ArrayVariable: public VariableDeclaration {
     //if the type is array of arrays of ... of type.
     std::vector<VariableType> types;
 };
