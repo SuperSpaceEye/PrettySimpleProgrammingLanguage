@@ -35,7 +35,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
             case ActionType::FunctionCall: {
                 auto & fn_call = *static_cast<FunctionCallAction*>(root.get());
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
-                    auto & arg = fn_call.arguments[i];
+                    auto arg = fn_call.arguments[i];
                     auto req_type = std::get<1>(scope.get_fn(fn_call.name_id))[i];
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {

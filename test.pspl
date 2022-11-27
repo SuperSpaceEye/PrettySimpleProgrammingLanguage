@@ -35,4 +35,8 @@ fn void main() {
 
     var int a;
     asgn(a, 10);
+    var int b;
+    asgn(b, 24);
+    var int c;
+    asgn(c, add(a, b));
 }

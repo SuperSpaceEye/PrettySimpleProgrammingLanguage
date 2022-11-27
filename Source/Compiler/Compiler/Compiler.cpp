@@ -1,6 +1,5 @@
 //
 // Created by spaceeye on 25.10.22.
-//
 
 #include "Compiler.h"
 
@@ -19,8 +18,7 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
 int type_size(VariableType type) {
     switch (type) {
         case VariableType::VOID: return 0;
-        //4 byte variable itself and a 4 byte type enum
-        case VariableType::B_ANY: return 8;
+        case VariableType::B_ANY: return 4;
 
         case VariableType::INT:
         case VariableType::UINT:
@@ -169,7 +167,7 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                                 scope.push(needed_byte_len, 0, 0, VariableType::INT);
                             }
                             auto begin_var_data = scope.get_min_pos_var_of_scope();
-                            needed_byte_len -= std::get<1>(begin_var_data);
+                            needed_byte_len -= std::get<0>(begin_var_data);
                             scope.free_var_from_popping(std::get<2>(begin_var_data));
                         }
 
@@ -241,7 +239,7 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                                     scope.push(needed_byte_len, 0, 0, VariableType::INT);
                                 }
                                 auto begin_var_data = scope.get_min_pos_var_of_scope();
-                                needed_byte_len -= std::get<1>(begin_var_data);
+                                needed_byte_len -= std::get<0>(begin_var_data);
                                 scope.free_var_from_popping(std::get<2>(begin_var_data));
                             }
 
@@ -288,7 +286,14 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
                 i+=3;
             }
                 break;
-            case ByteCode::SWAP:
+            case ByteCode::SWAP: {
+                std::cout << "SWAP " << *((uint32_t*)&code[++i]) << " ";
+                i+=4;
+                std::cout << " " << *((uint32_t*)&code[i]) << " ";
+                i+=4;
+                std::cout << " " << *((uint32_t*)&code[i]) << "\n";
+                i+=3;
+            }
                 break;
             case ByteCode::COPY_PUSH:
                 break;
