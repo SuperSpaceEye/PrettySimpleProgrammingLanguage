@@ -38,7 +38,6 @@ struct FunctionDeclaration: public BaseAction {
 struct VariableDeclaration: public BaseAction {
     VariableType var_type;
     int var_id;
-    bool is_declaration = false;
     bool reference = false;
 };
 

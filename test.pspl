@@ -12,6 +12,7 @@ fn int user_add(int a, int b, int c) {
     return(add(add(a, b), c));
 }
 
+
 fn void main() {
     #var int a = -10;
     #uint b = 20;
@@ -24,10 +25,10 @@ fn void main() {
     #second_wacky_Function(a, b, c, d, e, result, result/58.4) #result should be 18880.8
     #int c = a + d;
 
-
     var int a;
     var int b;
     var int c;
+    var float e;
 
     #a = 10;
     #b = 20;
@@ -39,4 +40,6 @@ fn void main() {
     asgn(c, add(a, b));
     asgn(c, mul(c, b));
     asgn(c, user_add(a, b, c))
+    asgn(e, 10.4);
+    asgn(e, user_add(a, b, to_int(e)));
 }

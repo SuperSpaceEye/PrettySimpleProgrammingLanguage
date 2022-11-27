@@ -8,6 +8,7 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
     auto res = Transpiler::transpile_data(str_data);
     if (debug) {Transpiler::display_tokens(res);}
     auto ast = Parser::create_ast(res, debug);
+    auto vres = Parser::validate_ast(ast, debug);
 
     return std::vector<ByteCode>();
 }

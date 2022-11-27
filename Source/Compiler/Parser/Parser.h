@@ -13,12 +13,6 @@
 #include "Action/Actions.h"
 #include "BuiltinFunctions.h"
 
-struct ASTCreationResult {
-    std::vector<std::shared_ptr<BaseAction>> function_roots;
-    std::vector<int> function_ids;
-    std::vector<int> variable_ids;
-};
-
 struct ActionTreeResult {
 
 };
@@ -62,6 +56,84 @@ public:
     }
 };
 
+struct ASTCreationResult {
+    std::vector<std::shared_ptr<BaseAction>> function_roots;
+    IdRegister reg;
+};
+
+struct Scope {
+    std::vector<std::vector<std::tuple<int, VariableType>>> var_scope;
+    std::vector<std::vector<std::tuple<int, std::vector<VariableType>, VariableType>>> fn_scope{{}};
+    void push_scope() {
+        var_scope.emplace_back();
+        fn_scope.emplace_back();
+    }
+    void pop_scope() {
+        var_scope.pop_back();
+        fn_scope.pop_back();
+    }
+    void push_id(int id, VariableType type) {
+        var_scope.back().emplace_back(id, type);
+    }
+    void push_fn(int id, const std::vector<VariableType>& arguments_types, VariableType return_type) {
+        fn_scope.back().emplace_back(id, arguments_types, return_type);
+    }
+    bool check_id(int id) {
+        for (int i = var_scope.size()-1; i >= 0; i--) {
+            for (auto & sid: var_scope[i]) {
+                if (std::get<0>(sid) == id) {return true;}
+            }
+        }
+        return false;
+    }
+    bool check_fn_id(int id) {
+        for (int i = fn_scope.size()-1; i >= 0; i--) {
+            for (auto & sid: fn_scope[i]) {
+                if (std::get<0>(sid) == id) {return true;}
+            }
+        }
+        return false;
+    }
+    std::tuple<bool, const std::vector<VariableType>&, VariableType> get_fn(int id) {
+        if (!check_fn_id(id)) {throw std::logic_error("Function was not declared in this scope.");}
+        for (int i = fn_scope.size()-1; i >= 0; i--) {
+            for (auto & fn: fn_scope[i]) {
+                if (std::get<0>(fn) == id) {
+                    return {true, std::get<1>(fn), std::get<2>(fn)};
+                }
+            }
+        }
+    }
+    VariableType get_var_type(int id) {
+        if (!check_id(id)) {throw std::logic_error("Variable was not declared in this scope.");}
+        for (int i = var_scope.size()-1; i >= 0; i--) {
+            for (auto & sid: var_scope[i]) {
+                if (std::get<0>(sid) == id) {return std::get<1>(sid);}
+            }
+        }
+        throw std::logic_error("Variable was not declared in this scope.");
+    }
+    bool check_id_in_lscope(int id) {
+        for (auto & sid: var_scope.back()) {
+            if (std::get<0>(sid) == id) {return true;}
+        }
+        return false;
+    }
+
+    void populate_builtins(IdRegister & reg) {
+        for (int id: reg.builtins) {
+            auto bnf = reg.get_builtin(id);
+
+            std::vector<VariableType> args;
+            for (auto & arg: std::get<2>(bnf.second)) {args.emplace_back(arg.first);}
+
+            auto ret_type = std::get<1>(bnf.second);
+
+            push_fn(id, args, ret_type);
+        }
+    }
+};
+
 class Parser {
     static void
     recursive_create_ast(const std::vector<Token> &tokens, int logic_indentation, bool &function_declaration,
@@ -73,16 +145,15 @@ class Parser {
     static VariableType convert_token_type(Token token);
     static int get_id(const std::vector<Token> &tokens, int & i);
 
-    static bool is_inc_dec_expression(const std::vector<Token> & tokens, int & i);
-    static bool is_assignment_expression(const std::vector<Token> & tokens, int & i);
-    static bool is_math_or_logic_expr(const std::vector<Token> & tokens, int i);
-
     static bool is_math_or_logic_token(Token token);
 
 public:
     static ASTCreationResult create_ast(TranspilerResult &t_result, bool debug);
+    static bool validate_ast(ASTCreationResult &ast_result, bool debug);
     static ActionTreeResult create_action_tree(ASTCreationResult & ast_result);
     static void show_ast(ASTCreationResult &ast_result, IdRegister &id_reg);
+
+    static void recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root);
 };
 
 
