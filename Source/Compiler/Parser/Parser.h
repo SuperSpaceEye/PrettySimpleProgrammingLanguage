@@ -61,7 +61,7 @@ struct ASTCreationResult {
     IdRegister reg;
 };
 
-struct Scope {
+struct ValidateScope {
     std::vector<std::vector<std::tuple<int, VariableType>>> var_scope;
     std::vector<std::vector<std::tuple<int, std::vector<VariableType>, VariableType>>> fn_scope{{}};
     void push_scope() {
@@ -153,7 +153,7 @@ public:
     static ActionTreeResult create_action_tree(ASTCreationResult & ast_result);
     static void show_ast(ASTCreationResult &ast_result, IdRegister &id_reg);
 
-    static void recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id);
+    static void recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id);
 };
 
 

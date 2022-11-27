@@ -9,15 +9,15 @@ bool check_for_main(ASTCreationResult & ast_result);
 void Parser::validate_ast(ASTCreationResult &ast_result, bool debug) {
     if (!check_for_main(ast_result)) {throw std::logic_error("No void main() function");}
 
-    Scope scope;
+    ValidateScope scope;
     scope.populate_builtins(ast_result.reg);
 
-    for (auto & root: ast_result.function_roots) {
+    for (auto root: ast_result.function_roots) {
         recursive_validate(scope, root, -1);
     }
 }
 
-void Parser::recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id) {
+void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id) {
     int do_not_push_scope = 0;
     while (root != nullptr) {
         switch (root->act_type) {

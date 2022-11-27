@@ -7,6 +7,7 @@
 
 enum class VariableType {
     VOID,
+    //ONLY FOR 4 BYTE TYPES
     B_ANY,
     INT,
     UINT,

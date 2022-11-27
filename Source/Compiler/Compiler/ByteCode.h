@@ -5,7 +5,7 @@
 #ifndef ANOTHERPROGRAMMINGLANGUAGE_BYTECODE_H
 #define ANOTHERPROGRAMMINGLANGUAGE_BYTECODE_H
 
-// PUSH num - adds {num} bytes to the stack with values set from bytecode itself
+// PUSH num value - adds {num} bytes to the stack with values set from bytecode itself
 // POP num - pops {num} bytes from the stack
 // SWAP pos1 pos2 num - swaps {num} bytes from positions
 // COPY_PUSH pos, num - pushes {num} bytes, and copies {num} bytes from {pos}
