@@ -49,6 +49,28 @@ Transpiler::transpile(TranspilerResult &to_return, std::string &word, const std:
             continue;
         }
 
+        if (chr == "\"") {
+            to_return.tokens.emplace_back(Token::STR_BRACKET);
+            while (i < data.length() && data[++i] != *"\"") {
+                if (data[i] == *"\\") {
+                    if (i + 1 < data.length()) {
+                        if (data[i+1] == *"n") {
+                            to_return.tokens.emplace_back((Token)(*"\n"+num_tokens)); i++;
+                        } else if (data[i+1] == *"\"") {
+                            to_return.tokens.emplace_back((Token)(*"\""+num_tokens)); i++;
+                        } else if (data[i+1] == *"\\") {
+                            to_return.tokens.emplace_back((Token)(*"\\"+num_tokens)); i++;
+                        } else {
+                            to_return.tokens.emplace_back((Token)(*"\\"+num_tokens));
+                        }
+                    }
+                } else {
+                    to_return.tokens.emplace_back((Token)(data[i]+num_tokens));
+                }
+            }
+            to_return.tokens.emplace_back(Token::STR_BRACKET);
+        }
+
         if (is_logic_char(chr)) {
             if (!word.empty()) {
                 add_token(to_return.tokens, get_token(word, to_return.wreg));
@@ -137,8 +159,22 @@ void Transpiler::display_tokens(TranspilerResult &result) {
             continue;
         }
 
+        if (token == Token::COMMA) {
+            std::cout << ", ";
+        }
+
         if (token == Token::UNK_WORD) {
             std::cout << result.wreg.get_word(result.tokens[i+1]) << " ";
+            i++;
+            continue;
+        }
+
+        if (token == Token::STR_BRACKET) {
+            std::cout << "\"";
+            while (result.tokens[++i] != Token::STR_BRACKET) {
+                std::cout << (char)((int)result.tokens[i]-num_tokens);
+            }
+            std::cout << "\"";
             i++;
             continue;
         }

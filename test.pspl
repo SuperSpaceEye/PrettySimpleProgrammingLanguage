@@ -42,4 +42,16 @@ fn void main() {
     asgn(c, user_add(a, b, c))
     asgn(e, 10.4);
     asgn(e, user_add(a, b, to_int(e)));
+
+    var string out;
+    concat(out, "Result number: ")
+    concat(out, to_str(a));
+    concat(out, " ");
+    concat(out, to_str(b));
+    concat(out, " ");
+    concat(out, to_str(c));
+    concat(out, " ");
+    concat(out, to_str(e));
+
+    print(out);
 }

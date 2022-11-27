@@ -18,6 +18,7 @@ enum class ActionType {
     StartLogicBlock,
     EndLogicBlock,
     NumericConst,
+    StringConst,
     ReturnCall,
 };
 

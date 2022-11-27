@@ -54,7 +54,14 @@ void Parser::recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root)
                             recursive_validate(scope, arg);
                         }
                             break;
-                        case ActionType::NumericConst:
+                        case ActionType::NumericConst: {
+                            auto & num_arg = *static_cast<NumericConst*>(arg.get());
+                            if (!(req_type == VariableType::B_ANY || req_type == VariableType::STRING)) {throw std::logic_error("Type of numeric const does not match type of required argument.");}
+                        }
+                            break;
+                        case ActionType::StringConst: {
+                            if (!(req_type == VariableType::B_ANY || req_type == VariableType::STRING)) {throw std::logic_error("Type of a function argument is not string");}
+                        }
                             break;
                         default:
                             throw std::logic_error("Invalid function argument");

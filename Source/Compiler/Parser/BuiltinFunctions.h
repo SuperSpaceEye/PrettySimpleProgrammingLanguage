@@ -20,9 +20,6 @@ enum class BuiltinIDS{
     MUL_ADD,
     DIV_ADD,
 
-    INC,
-    DEC,
-
     AND,
     OR,
     EQUALS,
@@ -33,12 +30,14 @@ enum class BuiltinIDS{
     MORE,
     LESS,
 
+    CONCAT,
+    TO_STR,
     PRINT,
     TO_INT,
     TO_UINT,
     TO_FLOAT,
-
     RETURN,
+    INPUT,
 
     //TODO
 
@@ -69,11 +68,14 @@ const std::vector<std::tuple<std::string, VariableType, std::vector<std::pair<Va
         {"more",     VariableType::INT,   {{VariableType::B_ANY,  true}, {VariableType::B_ANY, true}}},
         {"less",     VariableType::INT,   {{VariableType::B_ANY,  true}, {VariableType::B_ANY, true}}},
 //        END OF TEMP FUNCTIONS
+        {"concat",   VariableType::VOID,  {{VariableType::STRING, true}, {VariableType::STRING, true}}},
+        {"to_str",   VariableType::STRING,{{VariableType::B_ANY,  true}}},
         {"print",    VariableType::VOID,  {{VariableType::STRING, true}}},
         {"to_int",   VariableType::INT,   {{VariableType::B_ANY,  true}}},
         {"to_uint",  VariableType::UINT,  {{VariableType::B_ANY,  true}}},
         {"to_float", VariableType::FLOAT, {{VariableType::B_ANY,  true}}},
         {"return",   VariableType::VOID,  {{VariableType::B_ANY,  true}}},
+        {"input",    VariableType::STRING,{{VariableType::STRING, true}}},
 };
 
 const int builtin_IDS_count = (int)BuiltinIDS::__COUNT;

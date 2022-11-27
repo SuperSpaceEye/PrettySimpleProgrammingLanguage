@@ -39,6 +39,16 @@ std::string num_to_str(NumericConst & var) {
     }
 }
 
+std::string str_const_to_str(StringConst & str) {
+    std::string to_return{};
+
+    for (auto chr: str.data) {
+        to_return += chr;
+    }
+
+    return to_return;
+}
+
 void display_root(BaseAction *root, int indentation, IdRegister &reg) {
     if (root == nullptr) { return;}
     switch (root->act_type) {
@@ -115,6 +125,12 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
             std::cout << pi(indentation) << "Return call of\n";
             display_root(ret_call.argument.get(), indentation+2, reg);
         }
+            break;
+        case ActionType::StringConst: {
+            auto & str_const = *static_cast<StringConst*>(root);
+            std::cout << pi(indentation) << "Call of string const \"" << str_const_to_str(str_const) << "\"\n";
+        }
+            break;
     }
     display_root(root->next_action.get(), indentation, reg);
 }

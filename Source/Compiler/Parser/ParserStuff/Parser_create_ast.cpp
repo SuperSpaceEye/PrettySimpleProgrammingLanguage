@@ -223,6 +223,20 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
             }
                 break;
 
+            case Token::STR_BRACKET: {
+                std::vector<char> data;
+                while (tokens[++i] != Token::STR_BRACKET) {
+                    data.emplace_back((char)((int)tokens[i]-num_tokens));
+                }
+                i++;
+
+                temp_root = std::make_shared<StringConst>(StringConst{BaseAction{ActionType::StringConst},
+                                                                      data});
+                root->next_action = temp_root;
+                root = temp_root;
+            }
+                break;
+
             case Token::ARRAY:
             case Token::INT:
             case Token::UINT:
@@ -248,6 +262,7 @@ VariableType Parser::convert_token_type(Token token) {
         case Token::UINT:  return VariableType::UINT; break;
         case Token::FLOAT: return VariableType::FLOAT; break;
         case Token::ARRAY: return VariableType::ARRAY; break;
+        case Token::STRING:return VariableType::STRING;
         default:
             throw std::logic_error{"Invalid token in variable type."};
     }

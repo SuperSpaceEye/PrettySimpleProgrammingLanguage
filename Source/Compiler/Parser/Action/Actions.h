@@ -51,6 +51,10 @@ struct NumericConst: public BaseAction {
     uint32_t value;
 };
 
+struct StringConst: public BaseAction {
+    std::vector<char> data;
+};
+
 struct ArrayVariable: public VariableDeclaration {
     //if the type is array of arrays of ... of type.
     std::vector<VariableType> types;

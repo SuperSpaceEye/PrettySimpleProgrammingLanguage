@@ -10,8 +10,8 @@
 #include <array>
 #include <cstring>
 
-const int num_tokens = 42;
-const int num_words = 40;
+const int num_tokens = 43;
+const int num_words = 41;
 
 enum class Token {
     FUNCTION,
@@ -23,6 +23,7 @@ enum class Token {
     INT,
     UINT,
     FLOAT,
+    STRING,
     IF,
     WHILE,
     FOR,
@@ -58,6 +59,8 @@ enum class Token {
     BEGIN_LOGIC_BLOCK,
     END_LOGIC_BLOCK,
 
+    STR_BRACKET,
+
     REF,
     END_COMMAND,
     COMMENT,
@@ -78,6 +81,7 @@ const std::vector<std::string> reserved_tokens {
     "int",
     "uint",
     "float",
+    "string",
     "if",
     "while",
     "for",
@@ -112,6 +116,8 @@ const std::vector<std::string> reserved_tokens {
     "]",
     "{",
     "}",
+
+    "\"",
 
     "&",
     ";",
