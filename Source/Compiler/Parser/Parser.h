@@ -149,11 +149,11 @@ class Parser {
 
 public:
     static ASTCreationResult create_ast(TranspilerResult &t_result, bool debug);
-    static bool validate_ast(ASTCreationResult &ast_result, bool debug);
+    static void validate_ast(ASTCreationResult &ast_result, bool debug);
     static ActionTreeResult create_action_tree(ASTCreationResult & ast_result);
     static void show_ast(ASTCreationResult &ast_result, IdRegister &id_reg);
 
-    static void recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root);
+    static void recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id);
 };
 
 

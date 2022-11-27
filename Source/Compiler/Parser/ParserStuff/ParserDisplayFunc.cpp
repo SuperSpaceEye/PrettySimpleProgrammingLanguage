@@ -60,11 +60,11 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
 
         }
         case ActionType::FunctionDeclaration: {
-            std::cout << "\n\n";
+            std::cout << "\n";
             auto & fn_dec = *static_cast<FunctionDeclaration*>(root);
             std::cout << pi(indentation) << "Declaration " << (fn_dec.is_inline ? "inline ": "")
                       << reg.id_to_string(fn_dec.fn_id) << " returns " << get_string_type(fn_dec.return_type)
-                      << " arguments " << fn_dec.arguments.size() << ":";
+                      << " | arguments " << fn_dec.arguments.size() << ":";
             for (int i = 0; i < fn_dec.arguments.size(); i++) {
                 auto & arg = fn_dec.arguments[i];
                 std::cout << " " << get_string_type(std::get<0>(arg)) << " ";
@@ -83,8 +83,7 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
             std::cout << pi(indentation) << "Call of " << reg.id_to_string(fnc.name_id)
             << " returns " << get_string_type(fnc.return_type) << " type " <<
             (fnc.fn_type == FunctionType::BuiltinFunction ? "\"builtin\" ": "\"user declared\" ")
-            << "\n";
-            std::cout << pi(indentation+2) << "Arguments " << fnc.arguments.size() << ":\n";
+            << "| arguments " << fnc.arguments.size() << ":\n";
             for (auto & item: fnc.arguments) {
                 display_root(item.get(), indentation+4, reg);
             }
@@ -108,11 +107,12 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
         }
             break;
         case ActionType::StartLogicBlock: {
-
+            indentation+=2;
         }
             break;
         case ActionType::EndLogicBlock: {
-
+            indentation-=2;
+            std::cout << "\n";
         }
             break;
         case ActionType::NumericConst: {

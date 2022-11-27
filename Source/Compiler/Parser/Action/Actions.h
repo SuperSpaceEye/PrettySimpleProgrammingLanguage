@@ -24,7 +24,7 @@ struct FunctionCallAction: public BaseAction {
 };
 
 struct ReturnCall: public BaseAction {
-    std::shared_ptr<BaseAction> argument;
+    std::shared_ptr<BaseAction> argument = nullptr;
 };
 
 struct FunctionDeclaration: public BaseAction {

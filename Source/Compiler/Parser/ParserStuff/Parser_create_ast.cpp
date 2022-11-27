@@ -35,6 +35,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
 
         switch (token) {
             case Token::FUNCTION: {
+//                if (function_declaration) {throw std::logic_error("Functions cannot be declared inside another functions.");}
 //                if (logic_indentation != 0) { throw std::logic_error{"Functions should be declared at top level."}; }
                 function_declaration = true;
 
@@ -115,6 +116,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                 temp_root = std::make_shared<BaseAction>(BaseAction{ActionType::StartLogicBlock});
                 root->next_action = temp_root;
                 root = temp_root;
+                recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, reg, root, begin_num, end_num, ++i);
                 break;
             case Token::END_LOGIC_BLOCK:
                 logic_indentation--;
@@ -143,7 +145,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                         //var type, is_reference, var id
                         std::vector<std::shared_ptr<BaseAction>> arguments;
 
-                        if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration."};}
+                        if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
 
                         while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
                             auto arg_root = std::make_shared<BaseAction>();
@@ -180,7 +182,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                         //var type, is_reference, var id
                         std::vector<std::shared_ptr<BaseAction>> arguments;
 
-                        if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration."};}
+                        if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
 
                         while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
                             auto arg_root = std::make_shared<BaseAction>();

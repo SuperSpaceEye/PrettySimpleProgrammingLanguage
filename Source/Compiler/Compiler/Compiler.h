@@ -12,7 +12,30 @@
 #include "../Transpiler/Transpiler.h"
 #include "../Parser/Parser.h"
 
+struct StackScope {
+    //num, pos, id, type
+    std::vector<std::vector<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>>> scope{{}};
+
+    void push_scope() {scope.emplace_back();}
+    std::vector<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>> pop_scope() {
+        auto temp_scope = scope.back();
+        scope.pop_back();
+        return temp_scope;
+    }
+    void push(uint32_t num, uint32_t pos, uint32_t id, VariableType type) {
+        scope.back().emplace_back(num, pos, id, type);
+    }
+    int get_current_total() {
+        int total = 0;
+        for (auto item: scope.back()) {
+            total += std::get<0>(item);
+        }
+        return total;
+    }
+};
+
 class Compiler {
+    static std::vector<ByteCode> compile_(ASTCreationResult & ast);
 public:
     static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
 };

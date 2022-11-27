@@ -6,25 +6,24 @@
 
 bool check_for_main(ASTCreationResult & ast_result);
 
-bool Parser::validate_ast(ASTCreationResult &ast_result, bool debug) {
-    if (!check_for_main(ast_result)) {throw std::logic_error("No main() function");}
+void Parser::validate_ast(ASTCreationResult &ast_result, bool debug) {
+    if (!check_for_main(ast_result)) {throw std::logic_error("No void main() function");}
 
     Scope scope;
     scope.populate_builtins(ast_result.reg);
 
     for (auto & root: ast_result.function_roots) {
-        recursive_validate(scope, root);
+        recursive_validate(scope, root, -1);
     }
-
-    return true;
 }
 
-void Parser::recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root) {
+void Parser::recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id) {
     int do_not_push_scope = 0;
     while (root != nullptr) {
         switch (root->act_type) {
             case ActionType::VariableDeclaration: {
                 auto & var_decl = *static_cast<VariableDeclaration*>(root.get());
+                if (scope.check_id_in_lscope(var_decl.var_id)) {throw std::logic_error("Cannot redeclare a variable in same scope");}
                 scope.push_id(var_decl.var_id, var_decl.var_type);
             }
                 break;
@@ -51,7 +50,7 @@ void Parser::recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root)
                             if (!(req_type == VariableType::B_ANY || req_type == afn_call.return_type)) {
                                 throw std::logic_error("Type of function argument doesn't match required type");
                             }
-                            recursive_validate(scope, arg);
+                            recursive_validate(scope, arg, 0);
                         }
                             break;
                         case ActionType::NumericConst: {
@@ -71,6 +70,7 @@ void Parser::recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root)
                 break;
             case ActionType::FunctionDeclaration: {
                 auto & fn_decl = *static_cast<FunctionDeclaration*>(root.get());
+                parent_obj_id = fn_decl.fn_id;
 
                 auto args = std::vector<VariableType>{};
                 for (auto & arg: fn_decl.arguments) {args.emplace_back(std::get<0>(arg));}
@@ -101,7 +101,40 @@ void Parser::recursive_validate(Scope &scope, std::shared_ptr<BaseAction> &root)
                 break;
             case ActionType::NumericConst:
                 break;
-            case ActionType::ReturnCall:
+            case ActionType::ReturnCall: {
+                auto & ret_call = *static_cast<ReturnCall*>(root.get());
+                auto fn = scope.get_fn(parent_obj_id);
+                auto return_type = std::get<2>(fn);
+
+                auto & arg = ret_call.argument;
+                if (return_type == VariableType::VOID) {
+                    if (arg != nullptr) {throw std::logic_error("Return from void function.");}
+                } else {
+                    switch (arg->act_type) {
+                        case ActionType::VariableCall: {
+                            auto & var = *static_cast<VariableCall*>(arg.get());
+                            if (!(return_type == VariableType::B_ANY || scope.get_var_type(var.var_id) != return_type)) {throw std::logic_error("Invalid return type.");}
+                        }
+                            break;
+                        case ActionType::FunctionCall: {
+                            auto & fn_call = *static_cast<FunctionCallAction*>(arg.get());
+                            if (!(return_type == VariableType::B_ANY || fn_call.return_type != return_type)) {throw std::logic_error("Invalid return type.");}
+                        }
+                            break;
+                        case ActionType::NumericConst: {
+                            auto & num_const = *static_cast<NumericConst*>(arg.get());
+                            if (!(return_type == VariableType::B_ANY || num_const.type != return_type)) {throw std::logic_error("Invalid return type.");}
+                        }
+                            break;
+                        case ActionType::StringConst: {
+                            if (!(return_type == VariableType::B_ANY || return_type != VariableType::STRING)) {throw std::logic_error("Invalid return type.");}
+                        }
+                            break;
+                        default:
+                            throw std::logic_error("Invalid return argument");
+                    }
+                }
+            }
                 break;
         }
         root = root->next_action;
@@ -112,7 +145,9 @@ bool check_for_main(ASTCreationResult & ast_result) {
     bool has_main = false;
     for (auto & item: ast_result.reg.function_ids) {
         if (std::get<1>(item) == "main") {
-            has_main = true;
+            if (std::get<2>(item)->return_type == VariableType::VOID) {
+                has_main = true;
+            }
             break;
         }
     }

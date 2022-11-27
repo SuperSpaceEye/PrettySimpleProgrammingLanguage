@@ -6,7 +6,7 @@
 
 void IdRegister::register_function(int id, FunctionDeclaration *fn_dec) {
     for (auto & ids: variable_ids) {
-        if (std::get<0>(ids) == id) {throw std::logic_error{"VariableDeclaration with id already exists."};}
+        if (std::get<0>(ids) == id) {throw std::logic_error{"Variable with id already exists."};}
     }
 
     for (auto & ids: function_ids) {
@@ -23,7 +23,6 @@ void IdRegister::register_variable(int id) {
 
     for (auto & ids: variable_ids) {
         if (ids.first == id) {
-//            throw std::logic_error{"VariableDeclaration with id already exists."};
             return;
         }
     }
