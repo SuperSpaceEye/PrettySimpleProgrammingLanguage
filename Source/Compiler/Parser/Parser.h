@@ -80,7 +80,7 @@ class Parser {
     static bool is_math_or_logic_token(Token token);
 
 public:
-    static ASTCreationResult create_ast(TranspilerResult & t_result);
+    static ASTCreationResult create_ast(TranspilerResult &t_result, bool debug);
     static ActionTreeResult create_action_tree(ASTCreationResult & ast_result);
     static void show_ast(ASTCreationResult &ast_result, IdRegister &id_reg);
 };

@@ -4,7 +4,7 @@
 
 #include "Parser.h"
 
-ASTCreationResult Parser::create_ast(TranspilerResult &t_result) {
+ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
     ASTCreationResult to_return{};
     IdRegister reg{t_result.wreg};
     std::vector<Token> & tokens = t_result.tokens;
@@ -23,7 +23,7 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result) {
         to_return.function_roots.emplace_back(beginning);
     }
 
-    show_ast(to_return, reg);
+    if (debug) {show_ast(to_return, reg);}
     return to_return;
 }
 
@@ -61,13 +61,11 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                     auto var_type = convert_token_type(tokens[i]);
                     auto is_ref = false; if (tokens[++i] == Token::REF) {is_ref=true;} else {--i;}
                     auto var_id = get_id(tokens, ++i);
-//                    i++;
 
                     reg.register_variable(var_id);
 
                     arguments.emplace_back(var_type, is_ref, var_id);
                 }
-//                i--;
 
                 auto temp_root = std::make_shared<FunctionDeclaration>(FunctionDeclaration{BaseAction{ActionType::FunctionDeclaration, root},
                                                                                  id, is_inline, return_type, arguments});
@@ -210,8 +208,6 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                     throw std::logic_error("Undeclared token");
                 }
 
-//                if (try_process_builtin_expression(tokens, i, root)) { continue;}
-//                if (try_process_math_or_logic_expr(tokens, i, root)) { continue;}
             }
                 break;
             case Token::NUMBER: {
