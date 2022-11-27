@@ -41,20 +41,15 @@ bool arg_is_ref(FunctionCallAction & node, int pos) {
 }
 
 void put_4_num(std::vector<ByteCode> & bcode, uint32_t num) {
-//    for (int i = 0; i < 4; i++) {
-//        uint32_t temp_num = num;
-//        bcode.emplace_back((ByteCode)(temp_num>>((i)*4)));
-//    }
     int pos = bcode.size();
     for (int i = 0; i < 4; i++) {bcode.emplace_back();}
     *((uint32_t*)&bcode[pos]) = num;
 }
 
 void put_8_num(std::vector<ByteCode> & bcode, uint64_t num) {
-    for (int i = 0; i < 8; i++) {
-        uint32_t temp_num = num;
-        bcode.emplace_back((ByteCode)(temp_num>>((i)*8)));
-    }
+    int pos = bcode.size();
+    for (int i = 0; i < 8; i++) {bcode.emplace_back();}
+    *((uint64_t *)&bcode[pos]) = num;
 }
 
 std::vector<ByteCode> Compiler::compile_(ASTCreationResult &ast) {
@@ -104,12 +99,14 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                             auto data = scope.get_var(var_call.var_id);
                             uint32_t var_size = std::get<0>(data);
                             uint32_t var_pos = std::get<1>(data);
+                            //if var is reference, then function will modify stack pos directly.
                             if (arg_is_ref(fn_call, i)) {
                                 bcode.emplace_back(ByteCode::PUSH);
                                 put_4_num(bcode, 4);
                                 put_4_num(bcode, var_pos);
                                 stack_size += 4;
                                 scope.push(4, stack_size-4, 0, VariableType::INT);
+                            //if not ref, then make copy of stack variable
                             } else {
                                 bcode.emplace_back(ByteCode::COPY_PUSH);
                                 if (var_size == 4) {
@@ -127,10 +124,12 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                         }
                             break;
                         case ActionType::FunctionCall: {
-                            //return value will be on top of the stack.
+                            //If nested function call, then just recursively process it, as returned value will be on
+                            //top of the stack.
                             recursive_compile(bcode, scope, stack_size, arg);
                         }
                             break;
+                        //If number const, then just push value saved in code to stack.
                         case ActionType::NumericConst: {
                             auto & num_call = *static_cast<NumericConst*>(arg.get());
                             bcode.push_back(ByteCode::PUSH);
@@ -145,13 +144,19 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                             break;
                     }
                 }
+                //if builtin function, then popping of pushed stack values must be processed manually.
+                //if the function is user defined, popping of stack values will be handled by return call.
                 if (fn_call.fn_type == FunctionType::BuiltinFunction) {
                     bcode.emplace_back(ByteCode::BUILTIN_CALL);
                     put_4_num(bcode, fn_call.fn_id);
 
+                    //how many bytes it needs to return
                     auto needed_byte_len = type_size(fn_call.return_type);
 
                     //TODO put into function
+                    //if not 0, then it must swap result with the top's scope position
+                    //then it must calculate how much values it must pop.
+                    //TODO wtf I am doing here. optimize for pops to be just a number.
                     if (needed_byte_len != 0) {
                         bcode.emplace_back(ByteCode::SWAP);
                         put_4_num(bcode, std::get<1>(scope.get_min_pos_var_of_scope()));
