@@ -2,6 +2,19 @@
 #    return(add(add(a, b), c));
 #}
 
+#fn void print_3_num(int a, int b, int c) {
+#    print_num(a);
+#    print_num(b);
+#    print_num(c);
+#}
+
+fn int test_fn() {
+    fn void get_ten() {
+        var int a;
+    }
+    return(10);
+}
+
 fn void main() {
     #fn void test() {
     #    print("hello world");
@@ -39,4 +52,12 @@ fn void main() {
     asgn(b, 24);
     var int c;
     asgn(c, add(a, b));
+
+    print_num(a);
+    print_num(b);
+    print_num(c);
+}
+
+fn void test2() {
+    var int b;
 }

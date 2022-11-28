@@ -6,10 +6,10 @@
 std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data, bool debug) {
     auto res = Transpiler::transpile_data(str_data);
     if (debug) {Transpiler::display_tokens(res);}
-    auto ast = Parser::create_ast(res, debug);
-    Parser::validate_ast(ast, debug);
 
-    auto code = compile_(ast);
+    auto tree = Parser::create_tree(res, debug);
+
+    auto code = compile_(tree);
     if (debug) {display_code(code);}
 
     return code;
@@ -52,14 +52,14 @@ void put_8_num(std::vector<ByteCode> & bcode, uint64_t num) {
     *((uint64_t *)&bcode[pos]) = num;
 }
 
-std::vector<ByteCode> Compiler::compile_(ASTCreationResult &ast) {
+std::vector<ByteCode> Compiler::compile_(TreeResult &tree_res) {
     std::vector<ByteCode> bcode;
     //TODO only main for now.
 
     StackScope scope;
     int stack_size = 0;
 
-    auto node = ast.function_roots[0];
+    auto node = tree_res.object_roots[tree_res.main_idx];
     recursive_compile(bcode, scope, stack_size, node);
 
     return bcode;
@@ -154,41 +154,12 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                     auto needed_byte_len = type_size(fn_call.return_type);
                     bool popped = false;
 
-                    //TODO put into function
                     //if not 0, then it must swap result with the top's scope position
                     //then it must calculate how much values it must pop.
                     if (needed_byte_len != 0) {
-                        bcode.emplace_back(ByteCode::SWAP);
-                        put_4_num(bcode, std::get<1>(scope.get_min_pos_var_of_scope()));
-                        put_4_num(bcode, stack_size);
-                        put_4_num(bcode, needed_byte_len);
-
-                        int scope_total = scope.get_current_total();
-                        if (needed_byte_len > scope_total) {
-                            bcode.emplace_back(ByteCode::PUSH);
-                            put_4_num(bcode, 4);
-                            put_4_num(bcode, needed_byte_len - scope_total);
-                            scope.push(needed_byte_len - scope_total, 0, 0, VariableType::INT);
-                        }
-
-                        scope_total = scope.get_current_total();
-
-                        if (scope_total != needed_byte_len) {
-                            bcode.emplace_back(ByteCode::POP);
-                            put_4_num(bcode, scope_total - needed_byte_len);
-                            scope.push_one_scope_above(needed_byte_len, std::get<1>(scope.get_min_pos_var_of_scope()), 0, VariableType::INT);
-                        }
-                        scope.pop_scope();
-                        stack_size -= (scope_total - needed_byte_len);
-                        popped = true;
+                        generate_code_to_return_var_from_scope(scope, needed_byte_len, bcode, stack_size, popped);
                     }
-                    if (!popped) {
-                        auto scope_total = scope.get_current_total();
-                        scope.pop_scope();
-                        stack_size -= scope_total;
-                        bcode.emplace_back(ByteCode::POP);
-                        put_4_num(bcode, scope_total);
-                    }
+                    if (!popped) {free_scope(scope, bcode, stack_size);}
                 } else {
 
                 }
@@ -206,52 +177,34 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                 scope.push_scope();
                 break;
             case ActionType::EndLogicBlock: {
-                auto scope_total = scope.get_current_total();
-                scope.pop_scope();
-                stack_size -= scope_total;
-                bcode.emplace_back(ByteCode::POP);
-                put_4_num(bcode, scope_total);
+                free_scope(scope, bcode, stack_size);
             }
                 break;
             //swap values
             case ActionType::ReturnCall: {
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
+                bool popped = false;
                 switch (ret_call.argument->act_type) {
                     case ActionType::VariableCall: {
                         auto & var_call = *static_cast<VariableCall*>(ret_call.argument.get());
                         auto return_data = scope.get_var(var_call.var_id);
                         auto first_scope_var = scope.get_min_pos_var_of_scope();
+
+//                        auto need_byte_len = type_size(std::get<3>(return_data));
+
                         //if variable to return is first declared, then it just needs to not pop data when returning
-                        if (std::get<2>(return_data) != std::get<2>(first_scope_var)) {
-                            scope.free_var_from_popping(std::get<2>(return_data));
+                        if (std::get<2>(return_data) == std::get<2>(first_scope_var)) {
+                            scope.push_one_scope_above(
+                                    std::get<0>(return_data),
+                                    std::get<1>(return_data),
+                                            0,
+                                            VariableType::INT);
+                            scope.delete_from_scope(std::get<2>(return_data));
                         //if variable is not first declared, then it needs to swap data with first position, without
                         //popping returning data.
                         } else {
                             int needed_byte_len = std::get<0>(return_data);
-
-                            bcode.emplace_back(ByteCode::SWAP);
-                            put_4_num(bcode, std::get<1>(return_data));
-                            put_4_num(bcode, std::get<1>(first_scope_var));
-                            put_4_num(bcode, needed_byte_len);
-
-                            while (needed_byte_len > 0) {
-                                //if scope doesn't have enough variables to free from pop.
-                                if (scope.get_current_total() == 0) {
-                                    bcode.emplace_back(ByteCode::PUSH);
-                                    put_4_num(bcode, 4);
-                                    put_4_num(bcode, needed_byte_len);
-                                    scope.push(needed_byte_len, 0, 0, VariableType::INT);
-                                }
-                                auto begin_var_data = scope.get_min_pos_var_of_scope();
-                                needed_byte_len -= std::get<0>(begin_var_data);
-                                scope.free_var_from_popping(std::get<2>(begin_var_data));
-                            }
-
-                            //if there is too many not freed bytes
-                            if (needed_byte_len < 0) {
-                                //only num bytes matters
-                                scope.push(std::abs(needed_byte_len), 0, 0, VariableType::INT);
-                            }
+                            generate_code_to_return_var_from_scope(scope, needed_byte_len, bcode, stack_size, popped);
                         }
                     }
                         break;
@@ -262,6 +215,8 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                     case ActionType::ReturnCall:
                         break;
                 }
+
+                if (!popped) {free_scope(scope, bcode, stack_size);}
             }
                 break;
 //            case ActionType::NumericConst:
@@ -272,6 +227,42 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
 
         node = node->next_action;
     }
+}
+
+void
+Compiler::generate_code_to_return_var_from_scope(StackScope &scope, int needed_byte_len, std::vector<ByteCode> &bcode,
+                                                 int &stack_size, bool &popped) {
+    bcode.emplace_back(ByteCode::SWAP);
+    put_4_num(bcode, std::get<1>(scope.get_min_pos_var_of_scope()));
+    put_4_num(bcode, stack_size);
+    put_4_num(bcode, needed_byte_len);
+
+    int scope_total = scope.get_current_total();
+    if (needed_byte_len > scope_total) {
+        bcode.emplace_back(ByteCode::PUSH);
+        put_4_num(bcode, 4);
+        put_4_num(bcode, needed_byte_len - scope_total);
+        scope.push(needed_byte_len - scope_total, 0, 0, VariableType::INT);
+    }
+
+    scope_total = scope.get_current_total();
+
+    if (scope_total != needed_byte_len) {
+        bcode.emplace_back(ByteCode::POP);
+        put_4_num(bcode, scope_total - needed_byte_len);
+        scope.push_one_scope_above(needed_byte_len, std::get<1>(scope.get_min_pos_var_of_scope()), 0, VariableType::INT);
+    }
+    scope.pop_scope();
+    stack_size -= (scope_total - needed_byte_len);
+    popped = true;
+}
+
+void Compiler::free_scope(StackScope &scope, std::vector<ByteCode> &bcode, int &stack_size) {
+    auto scope_total = scope.get_current_total();
+    scope.pop_scope();
+    stack_size -= scope_total;
+    bcode.emplace_back(ByteCode::POP);
+    put_4_num(bcode, scope_total);
 }
 
 

@@ -13,10 +13,6 @@
 #include "Action/Actions.h"
 #include "BuiltinFunctions.h"
 
-struct ActionTreeResult {
-
-};
-
 class IdRegister {
 public:
     std::vector<std::tuple<int, std::string, FunctionDeclaration*>> function_ids;
@@ -57,8 +53,13 @@ public:
 };
 
 struct ASTCreationResult {
-    std::vector<std::shared_ptr<BaseAction>> function_roots;
+    std::vector<std::shared_ptr<BaseAction>> object_roots;
     IdRegister reg;
+};
+
+struct TreeResult {
+    std::vector<std::shared_ptr<BaseAction>> object_roots;
+    int main_idx;
 };
 
 struct ValidateScope {
@@ -147,13 +148,22 @@ class Parser {
 
     static bool is_math_or_logic_token(Token token);
 
-public:
+    static void recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id);
+
     static ASTCreationResult create_ast(TranspilerResult &t_result, bool debug);
     static void validate_ast(ASTCreationResult &ast_result, bool debug);
-    static ActionTreeResult create_action_tree(ASTCreationResult & ast_result);
     static void show_ast(ASTCreationResult &ast_result, IdRegister &id_reg);
+    static TreeResult extract_nested_functions(ASTCreationResult &ast_result);
 
-    static void recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id);
+    static int get_main_fn_idx(TreeResult &t_res, int main_id);
+public:
+
+    static TreeResult create_tree(TranspilerResult &t_result, bool debug) {
+        auto ast = Parser::create_ast(t_result, debug);
+        Parser::validate_ast(ast, debug);
+        auto tree = extract_nested_functions(ast);
+        return tree;
+    }
 };
 
 

@@ -19,7 +19,7 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
         recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, to_return.reg, root, 0, tokens.size(), i);
 
         i++;
-        to_return.function_roots.emplace_back(beginning->next_action);
+        to_return.object_roots.emplace_back(beginning->next_action);
     }
 
     if (debug) {show_ast(to_return, to_return.reg);}

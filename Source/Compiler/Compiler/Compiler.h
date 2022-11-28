@@ -39,7 +39,7 @@ struct StackScope {
     std::tuple<uint32_t, uint32_t, uint32_t, VariableType> get_min_pos_var_of_scope() {
         return scope.back()[0];
     }
-    void free_var_from_popping(int id) {
+    void delete_from_scope(int id) {
         for (int i = 0; i < scope.back().size(); i++) {
             auto & item = scope.back()[i];
             if (std::get<2>(item) == id) {
@@ -58,11 +58,16 @@ struct StackScope {
 };
 
 class Compiler {
-    static std::vector<ByteCode> compile_(ASTCreationResult & ast);
+    static std::vector<ByteCode> compile_(TreeResult &tree_res);
     static void display_code(std::vector<ByteCode> & code);
     static void recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope, int &stack_size, std::shared_ptr<BaseAction> &node);
+    static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode, int &stack_size);
 public:
     static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
+
+    static void
+    generate_code_to_return_var_from_scope(StackScope &scope, int needed_byte_len, std::vector<ByteCode> &bcode,
+                                           int &stack_size, bool &popped);
 };
 
 

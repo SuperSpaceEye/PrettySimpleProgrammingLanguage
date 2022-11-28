@@ -12,7 +12,7 @@ void Parser::validate_ast(ASTCreationResult &ast_result, bool debug) {
     ValidateScope scope;
     scope.populate_builtins(ast_result.reg);
 
-    for (auto root: ast_result.function_roots) {
+    for (auto root: ast_result.object_roots) {
         recursive_validate(scope, root, -1);
     }
 }
@@ -97,6 +97,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 break;
             case ActionType::EndLogicBlock: {
                 scope.pop_scope();
+                return;
             }
                 break;
             case ActionType::NumericConst:
@@ -113,21 +114,21 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {
                             auto & var = *static_cast<VariableCall*>(arg.get());
-                            if (!(return_type == VariableType::B_ANY || scope.get_var_type(var.var_id) != return_type)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || scope.get_var_type(var.var_id) == return_type)) {throw std::logic_error("Invalid return type.");}
                         }
                             break;
                         case ActionType::FunctionCall: {
                             auto & fn_call = *static_cast<FunctionCallAction*>(arg.get());
-                            if (!(return_type == VariableType::B_ANY || fn_call.return_type != return_type)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || fn_call.return_type == return_type)) {throw std::logic_error("Invalid return type.");}
                         }
                             break;
                         case ActionType::NumericConst: {
                             auto & num_const = *static_cast<NumericConst*>(arg.get());
-                            if (!(return_type == VariableType::B_ANY || num_const.type != return_type)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || num_const.type == return_type)) {throw std::logic_error("Invalid return type.");}
                         }
                             break;
                         case ActionType::StringConst: {
-                            if (!(return_type == VariableType::B_ANY || return_type != VariableType::STRING)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || return_type == VariableType::STRING)) {throw std::logic_error("Invalid return type.");}
                         }
                             break;
                         default:

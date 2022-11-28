@@ -136,7 +136,7 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
 }
 
 void Parser::show_ast(ASTCreationResult &ast_result, IdRegister &id_reg) {
-    for (auto root: ast_result.function_roots) {
+    for (auto root: ast_result.object_roots) {
         display_root(root.get(), 0, id_reg);
     }
 }
