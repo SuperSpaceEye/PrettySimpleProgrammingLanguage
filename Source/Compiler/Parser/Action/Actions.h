@@ -21,6 +21,7 @@ struct FunctionCallAction: public BaseAction {
     int name_id;
     VariableType return_type;
     std::vector<std::shared_ptr<BaseAction>> arguments;
+    std::vector<VariableType> required_arguments;
 };
 
 struct ReturnCall: public BaseAction {
@@ -43,6 +44,7 @@ struct VariableDeclaration: public BaseAction {
 
 struct VariableCall: public BaseAction {
     int var_id;
+    VariableType type;
 };
 
 struct NumericConst: public BaseAction {

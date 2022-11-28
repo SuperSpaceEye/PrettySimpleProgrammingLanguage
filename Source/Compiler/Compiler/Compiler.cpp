@@ -9,16 +9,20 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
 
     auto tree = Parser::create_tree(res, debug);
 
-    auto code = compile_(tree);
-    if (debug) {display_code(code);}
+    auto parts = compile_(tree);
+    if (debug) {display_code(parts[0].main_part);}
+    configure_main_fn(parts[0]);
+    link_custom_functions(parts);
 
-    return code;
+    auto code = concat_code(parts);
+
+    return optimize(code);
 }
 
 int type_size(VariableType type) {
     switch (type) {
         case VariableType::VOID: return 0;
-        case VariableType::B_ANY: return 4;
+        case VariableType::B_ANY: return 8;
 
         case VariableType::INT:
         case VariableType::UINT:
@@ -52,21 +56,51 @@ void put_8_num(std::vector<ByteCode> & bcode, uint64_t num) {
     *((uint64_t *)&bcode[pos]) = num;
 }
 
-std::vector<ByteCode> Compiler::compile_(TreeResult &tree_res) {
-    std::vector<ByteCode> bcode;
+std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
+    std::vector<FunctionPart> code_parts{};
     //TODO only main for now.
 
-    StackScope scope;
-    int stack_size = 0;
+    for (int i = 0; i < tree_res.object_roots.size(); i++) {
+        StackScope scope;
+        int stack_size = 0;
 
-    auto node = tree_res.object_roots[tree_res.main_idx];
-    recursive_compile(bcode, scope, stack_size, node);
+        if (i != tree_res.main_idx) {
+            scope.push_scope();
+            //positional argument + size of all arguments
+            stack_size += 4;
+            scope.push(4, 0, 0, VariableType::UINT);
 
-    return bcode;
+            auto & fn_call = *static_cast<FunctionDeclaration*>(tree_res.object_roots[i].get());
+            for (auto & arg: fn_call.arguments) {
+                int _type_size;
+                //if reference
+                if (std::get<1>(arg)) {
+                    _type_size = 4;
+                } else {
+                    _type_size = type_size(std::get<0>(arg));
+                }
+
+                stack_size += _type_size;
+                scope.push(_type_size, stack_size-_type_size, 0, std::get<0>(arg));
+            }
+        }
+
+        auto node = tree_res.object_roots[i];
+        code_parts.emplace_back();
+        code_parts.back().id = static_cast<FunctionDeclaration*>(node.get())->fn_id;
+        recursive_compile(code_parts.back(), scope, stack_size, node, i == tree_res.main_idx);
+    }
+
+    //so that main function would be the first.
+    std::swap(code_parts[0], code_parts[tree_res.main_idx]);
+
+    return code_parts;
 }
 
-void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope, int &stack_size,
-                                 std::shared_ptr<BaseAction> &node) {
+void
+Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_size, std::shared_ptr<BaseAction> &node,
+                            bool is_main) {
+    auto & main_part = part.main_part;
     while (node != nullptr) {
         switch (node->act_type) {
             case ActionType::VariableDeclaration: {
@@ -76,9 +110,9 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                     case VariableType::INT:
                     case VariableType::UINT:
                     case VariableType::FLOAT:
-                        bcode.emplace_back(ByteCode::PUSH);
-                        put_4_num(bcode, 4);
-                        put_4_num(bcode, 0);
+                        main_part.emplace_back(ByteCode::PUSH);
+                        put_4_num(main_part, 4);
+                        put_4_num(main_part, 0);
                         num_b = 4;
                         break;
                 }
@@ -91,6 +125,17 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
             case ActionType::FunctionCall: {
                 scope.push_scope();
                 auto & fn_call = *static_cast<FunctionCallAction*>(node.get());
+
+                if (fn_call.fn_type == FunctionType::UserFunction) {
+                    part.custom_function_calls.emplace_back();
+
+                    main_part.emplace_back(ByteCode::PUSH);
+                    part.custom_function_calls.back().pos_from_function_val = main_part.size();
+                    put_4_num(main_part, 0);
+                    scope.push(4, stack_size, 0, VariableType::INT);
+                    stack_size+=4;
+                }
+
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
                     auto & arg = fn_call.arguments[i];
                     switch (arg->act_type) {
@@ -100,25 +145,41 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                             uint32_t var_size = std::get<0>(data);
                             uint32_t var_pos = std::get<1>(data);
                             //if var is reference, then function will modify stack pos directly.
+                            //if ref of b_any then must also place type information
                             if (arg_is_ref(fn_call, i)) {
-                                bcode.emplace_back(ByteCode::PUSH);
-                                put_4_num(bcode, 4);
-                                put_4_num(bcode, var_pos);
+                                main_part.emplace_back(ByteCode::PUSH);
+                                put_4_num(main_part, 4);
+                                put_4_num(main_part, var_pos);
                                 stack_size += 4;
-                                scope.push(4, stack_size-4, 0, VariableType::INT);
+                                scope.push(4, stack_size-4, 0, VariableType::UINT);
+
+                                if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                                    main_part.emplace_back(ByteCode::PUSH);
+                                    put_4_num(main_part, 4);
+                                    put_4_num(main_part, (uint32_t)var_call.type);
+                                    stack_size += 4;
+                                    scope.push(4, stack_size-4, 0, VariableType::UINT);
+                                }
                             //if not ref, then make copy of stack variable
                             } else {
-                                bcode.emplace_back(ByteCode::COPY_PUSH);
+                                main_part.emplace_back(ByteCode::COPY_PUSH);
                                 if (var_size == 4) {
-                                    put_4_num(bcode, var_pos);
-                                    put_4_num(bcode, var_size);
+                                    put_4_num(main_part, var_pos);
+                                    put_4_num(main_part, var_size);
                                     stack_size += 4;
-                                    scope.push(4, stack_size-4, 0, VariableType::INT);
+                                    scope.push(4, stack_size-4, 0, VariableType::UINT);
                                 } else if (var_size == 8) {
-                                    put_8_num(bcode, var_pos);
-                                    put_8_num(bcode, var_size);
+                                    put_8_num(main_part, var_pos);
+                                    put_8_num(main_part, var_size);
                                     stack_size += 8;
-                                    scope.push(8, stack_size-8, 0, VariableType::INT);
+                                    scope.push(8, stack_size-8, 0, VariableType::UINT);
+                                }
+
+                                if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                                    main_part.emplace_back(ByteCode::PUSH);
+                                    put_4_num(main_part, (uint32_t)var_call.type);
+                                    stack_size += 4;
+                                    scope.push(4, stack_size-4, 0, VariableType::UINT);
                                 }
                             }
                         }
@@ -126,17 +187,31 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                         case ActionType::FunctionCall: {
                             //If nested function call, then just recursively process it, as returned value will be on
                             //top of the stack.
-                            recursive_compile(bcode, scope, stack_size, arg);
+                            recursive_compile(part, scope, stack_size, arg, false);
+                            if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                                auto &arg_fn_call = *static_cast<FunctionCallAction*>(arg.get());
+                                main_part.emplace_back(ByteCode::PUSH);
+                                put_4_num(main_part, (uint32_t)arg_fn_call.return_type);
+                                stack_size += 4;
+                                scope.push(4, stack_size-4, 0, VariableType::UINT);
+                            }
                         }
                             break;
                         //If number const, then just push value saved in code to stack.
                         case ActionType::NumericConst: {
                             auto & num_call = *static_cast<NumericConst*>(arg.get());
-                            bcode.push_back(ByteCode::PUSH);
-                            put_4_num(bcode, 4);
-                            put_4_num(bcode, num_call.value);
+                            main_part.push_back(ByteCode::PUSH);
+                            put_4_num(main_part, 4);
+                            put_4_num(main_part, num_call.value);
                             stack_size += 4;
                             scope.push(4, stack_size-4, 0, VariableType::INT);
+
+                            if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                                main_part.emplace_back(ByteCode::PUSH);
+                                put_4_num(main_part, (uint32_t)num_call.type);
+                                stack_size += 4;
+                                scope.push(4, stack_size-4, 0, VariableType::UINT);
+                            }
                         }
                             break;
                         case ActionType::StringConst:
@@ -147,8 +222,8 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                 //if builtin function, then popping of pushed stack values must be processed manually.
                 //if the function is user defined, popping of stack values will be handled by return call.
                 if (fn_call.fn_type == FunctionType::BuiltinFunction) {
-                    bcode.emplace_back(ByteCode::BUILTIN_CALL);
-                    put_4_num(bcode, fn_call.fn_id);
+                    main_part.emplace_back(ByteCode::BUILTIN_CALL);
+                    put_4_num(main_part, fn_call.fn_id);
 
                     //how many bytes it needs to return
                     auto needed_byte_len = type_size(fn_call.return_type);
@@ -157,11 +232,13 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                     //if not 0, then it must swap result with the top's scope position
                     //then it must calculate how much values it must pop.
                     if (needed_byte_len != 0) {
-                        generate_code_to_return_var_from_scope(scope, needed_byte_len, bcode, stack_size, popped);
+                        generate_code_to_return_var_from_scope(scope, needed_byte_len, main_part, stack_size, popped);
                     }
-                    if (!popped) {free_scope(scope, bcode, stack_size);}
+                    if (!popped) {free_scope(scope, main_part, stack_size);}
                 } else {
-
+                    main_part.emplace_back(ByteCode::GOTO);
+                    part.custom_function_calls.back().pos_to_function_val = main_part.size();
+                    put_4_num(main_part, 0);
                 }
             }
                 break;
@@ -177,10 +254,10 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                 scope.push_scope();
                 break;
             case ActionType::EndLogicBlock: {
-                free_scope(scope, bcode, stack_size);
+                free_scope(scope, main_part, stack_size);
             }
                 break;
-            //swap values
+            //if there is a return call then we assume that there is a return positional element at the top of the stack.
             case ActionType::ReturnCall: {
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
                 bool popped = false;
@@ -204,7 +281,7 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                         //popping returning data.
                         } else {
                             int needed_byte_len = std::get<0>(return_data);
-                            generate_code_to_return_var_from_scope(scope, needed_byte_len, bcode, stack_size, popped);
+                            generate_code_to_return_var_from_scope(scope, needed_byte_len, main_part, stack_size, popped);
                         }
                     }
                         break;
@@ -216,7 +293,7 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                         break;
                 }
 
-                if (!popped) {free_scope(scope, bcode, stack_size);}
+                if (!popped) {free_scope(scope, main_part, stack_size);}
             }
                 break;
 //            case ActionType::NumericConst:
@@ -305,4 +382,16 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
                 break;
         }
     }
+}
+
+std::vector<ByteCode> Compiler::concat_code(std::vector<FunctionPart> & parts) {
+    std::vector<ByteCode> to_return{};
+    for (auto & part: parts) {
+        to_return.insert(to_return.end(), part.main_part.begin(), part.main_part.end());
+    }
+    return to_return;
+}
+
+void Compiler::link_custom_functions(std::vector<FunctionPart> &parts) {
+
 }

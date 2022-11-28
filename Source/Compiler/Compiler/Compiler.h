@@ -57,17 +57,45 @@ struct StackScope {
     }
 };
 
+struct CustomFunctionData {
+    //start of the position of the value in code that user function will use
+    //to goto back to parent fn
+    uint32_t pos_from_function_val;
+    //start of the position of the value in code that parent function will use to
+    //goto to the user function
+    uint32_t pos_to_function_val;
+};
+
+struct FunctionPart {
+    // first token is entrance point to function
+    std::vector<ByteCode> main_part;
+    // code that should be executed after returned to parent function.
+    std::vector<ByteCode> return_part;
+    // indexes with goto's to custom functions (must be resolved)
+    std::vector<CustomFunctionData> custom_function_calls;
+
+    int id;
+};
+
 class Compiler {
-    static std::vector<ByteCode> compile_(TreeResult &tree_res);
+    static std::vector<FunctionPart> compile_(TreeResult &tree_res);
     static void display_code(std::vector<ByteCode> & code);
-    static void recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope, int &stack_size, std::shared_ptr<BaseAction> &node);
+    static void
+    recursive_compile(FunctionPart &part, StackScope &scope, int &stack_size, std::shared_ptr<BaseAction> &node,
+                      bool is_main);
     static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode, int &stack_size);
-public:
-    static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
 
     static void
     generate_code_to_return_var_from_scope(StackScope &scope, int needed_byte_len, std::vector<ByteCode> &bcode,
                                            int &stack_size, bool &popped);
+
+    static void configure_main_fn(FunctionPart & part) {}
+    static void link_custom_functions(std::vector<FunctionPart> & parts);
+    static std::vector<ByteCode> concat_code(std::vector<FunctionPart> & parts);
+    //TODO
+    static std::vector<ByteCode> optimize(std::vector<ByteCode> & code) {return code;}
+public:
+    static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
 };
 
 

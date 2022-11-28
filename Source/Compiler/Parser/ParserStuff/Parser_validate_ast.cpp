@@ -11,13 +11,16 @@ void Parser::validate_ast(ASTCreationResult &ast_result, bool debug) {
 
     ValidateScope scope;
     scope.populate_builtins(ast_result.reg);
+    std::vector<int> ids{};
+    int last_id = -1;
 
     for (auto root: ast_result.object_roots) {
-        recursive_validate(scope, root, -1);
+        recursive_validate(scope, root, ids, last_id);
     }
 }
 
-void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, int parent_obj_id) {
+void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids,
+                                int &last_id) {
     int do_not_push_scope = 0;
     while (root != nullptr) {
         switch (root->act_type) {
@@ -30,6 +33,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
             case ActionType::VariableCall: {
                 auto & var_call = *static_cast<VariableCall*>(root.get());
                 if (!scope.check_id(var_call.var_id)) {throw std::logic_error("Variable was not declared in this scope.");}
+                var_call.type = scope.get_var_type(var_call.var_id);
             }
                 break;
             case ActionType::FunctionCall: {
@@ -37,6 +41,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
                     auto arg = fn_call.arguments[i];
                     auto req_type = std::get<1>(scope.get_fn(fn_call.name_id))[i];
+                    fn_call.required_arguments.emplace_back(req_type);
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {
                             auto & var_call = *static_cast<VariableCall*>(arg.get());
@@ -50,7 +55,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                             if (!(req_type == VariableType::B_ANY || req_type == afn_call.return_type)) {
                                 throw std::logic_error("Type of function argument doesn't match required type");
                             }
-                            recursive_validate(scope, arg, 0);
+                            recursive_validate(scope, arg, ids, last_id);
                         }
                             break;
                         case ActionType::NumericConst: {
@@ -70,7 +75,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 break;
             case ActionType::FunctionDeclaration: {
                 auto & fn_decl = *static_cast<FunctionDeclaration*>(root.get());
-                parent_obj_id = fn_decl.fn_id;
+                last_id = fn_decl.fn_id;
 
                 auto args = std::vector<VariableType>{};
                 for (auto & arg: fn_decl.arguments) {args.emplace_back(std::get<0>(arg));}
@@ -94,9 +99,13 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 if (!do_not_push_scope) {
                     scope.push_scope();
                 } else {do_not_push_scope--;}
+                root = root->next_action;
+                ids.emplace_back(last_id);
+                recursive_validate(scope, root, ids, last_id);
                 break;
             case ActionType::EndLogicBlock: {
                 scope.pop_scope();
+                ids.pop_back();
                 return;
             }
                 break;
@@ -104,7 +113,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 break;
             case ActionType::ReturnCall: {
                 auto & ret_call = *static_cast<ReturnCall*>(root.get());
-                auto fn = scope.get_fn(parent_obj_id);
+                auto fn = scope.get_fn(ids.back());
                 auto return_type = std::get<2>(fn);
 
                 auto & arg = ret_call.argument;
