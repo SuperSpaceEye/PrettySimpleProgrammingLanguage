@@ -65,7 +65,7 @@ std::vector<ByteCode> Compiler::compile_(ASTCreationResult &ast) {
     return bcode;
 }
 
-void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope, int stack_size,
+void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope, int &stack_size,
                                  std::shared_ptr<BaseAction> &node) {
     while (node != nullptr) {
         switch (node->act_type) {
@@ -152,42 +152,42 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
 
                     //how many bytes it needs to return
                     auto needed_byte_len = type_size(fn_call.return_type);
+                    bool popped = false;
 
                     //TODO put into function
                     //if not 0, then it must swap result with the top's scope position
                     //then it must calculate how much values it must pop.
-                    //TODO wtf I am doing here. optimize for pops to be just a number.
                     if (needed_byte_len != 0) {
                         bcode.emplace_back(ByteCode::SWAP);
                         put_4_num(bcode, std::get<1>(scope.get_min_pos_var_of_scope()));
                         put_4_num(bcode, stack_size);
                         put_4_num(bcode, needed_byte_len);
 
-                        while (needed_byte_len > 0) {
-                            //if scope doesn't have enough variables to free from pop.
-                            if (scope.get_current_total() == 0) {
-                                bcode.emplace_back(ByteCode::PUSH);
-                                put_4_num(bcode, 4);
-                                put_4_num(bcode, needed_byte_len);
-                                scope.push(needed_byte_len, 0, 0, VariableType::INT);
-                            }
-                            auto begin_var_data = scope.get_min_pos_var_of_scope();
-                            needed_byte_len -= std::get<0>(begin_var_data);
-                            scope.free_var_from_popping(std::get<2>(begin_var_data));
+                        int scope_total = scope.get_current_total();
+                        if (needed_byte_len > scope_total) {
+                            bcode.emplace_back(ByteCode::PUSH);
+                            put_4_num(bcode, 4);
+                            put_4_num(bcode, needed_byte_len - scope_total);
+                            scope.push(needed_byte_len - scope_total, 0, 0, VariableType::INT);
                         }
 
-                        //if there is too many not freed bytes
-                        if (needed_byte_len < 0) {
-                            //only num bytes matters
-                            scope.push(std::abs(needed_byte_len), 0, 0, VariableType::INT);
+                        scope_total = scope.get_current_total();
+
+                        if (scope_total != needed_byte_len) {
+                            bcode.emplace_back(ByteCode::POP);
+                            put_4_num(bcode, scope_total - needed_byte_len);
+                            scope.push_one_scope_above(needed_byte_len, std::get<1>(scope.get_min_pos_var_of_scope()), 0, VariableType::INT);
                         }
+                        scope.pop_scope();
+                        stack_size -= (scope_total - needed_byte_len);
+                        popped = true;
                     }
-
-                    auto cleanup = scope.pop_scope();
-                    for (auto & item: cleanup) {
+                    if (!popped) {
+                        auto scope_total = scope.get_current_total();
+                        scope.pop_scope();
+                        stack_size -= scope_total;
                         bcode.emplace_back(ByteCode::POP);
-                        put_4_num(bcode, std::get<0>(item));
-                        stack_size -= std::get<0>(item);
+                        put_4_num(bcode, scope_total);
                     }
                 } else {
 
@@ -206,12 +206,11 @@ void Compiler::recursive_compile(std::vector<ByteCode> &bcode, StackScope &scope
                 scope.push_scope();
                 break;
             case ActionType::EndLogicBlock: {
-                auto cleanup = scope.pop_scope();
-                for (auto & item: cleanup) {
-                    bcode.emplace_back(ByteCode::POP);
-                    put_4_num(bcode, std::get<0>(item));
-                    stack_size -= std::get<0>(item);
-                }
+                auto scope_total = scope.get_current_total();
+                scope.pop_scope();
+                stack_size -= scope_total;
+                bcode.emplace_back(ByteCode::POP);
+                put_4_num(bcode, scope_total);
             }
                 break;
             //swap values
