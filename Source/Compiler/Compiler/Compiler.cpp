@@ -130,6 +130,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                     part.custom_function_calls.emplace_back();
 
                     main_part.emplace_back(ByteCode::PUSH);
+                    put_4_num(main_part, 4);
                     part.custom_function_calls.back().pos_from_function_val = main_part.size();
                     put_4_num(main_part, 0);
                     scope.push(4, stack_size, 0, VariableType::INT);
@@ -177,6 +178,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
 
                                 if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                     main_part.emplace_back(ByteCode::PUSH);
+                                    put_4_num(main_part, 4);
                                     put_4_num(main_part, (uint32_t)var_call.type);
                                     stack_size += 4;
                                     scope.push(4, stack_size-4, 0, VariableType::UINT);
@@ -187,10 +189,12 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                         case ActionType::FunctionCall: {
                             //If nested function call, then just recursively process it, as returned value will be on
                             //top of the stack.
-                            recursive_compile(part, scope, stack_size, arg, false);
+                            auto rec_arg = arg;
+                            recursive_compile(part, scope, stack_size, rec_arg, false);
                             if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                 auto &arg_fn_call = *static_cast<FunctionCallAction*>(arg.get());
                                 main_part.emplace_back(ByteCode::PUSH);
+                                put_4_num(main_part, 4);
                                 put_4_num(main_part, (uint32_t)arg_fn_call.return_type);
                                 stack_size += 4;
                                 scope.push(4, stack_size-4, 0, VariableType::UINT);
@@ -208,6 +212,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
 
                             if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                 main_part.emplace_back(ByteCode::PUSH);
+                                put_4_num(main_part, 4);
                                 put_4_num(main_part, (uint32_t)num_call.type);
                                 stack_size += 4;
                                 scope.push(4, stack_size-4, 0, VariableType::UINT);

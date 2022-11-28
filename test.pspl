@@ -8,12 +8,12 @@
 #    print_num(c);
 #}
 
-fn int test_fn() {
-    fn void get_ten() {
-        var int a;
-    }
-    return(10);
-}
+#fn int test_fn() {
+#    fn void get_ten() {
+#        var int a;
+#    }
+#    return(10);
+#}
 
 fn void main() {
     #fn void test() {
@@ -52,12 +52,13 @@ fn void main() {
     asgn(b, 24);
     var int c;
     asgn(c, add(a, b));
+    #asgn(c, 100);
 
     print_num(a);
     print_num(b);
     print_num(c);
 }
 
-fn void test2() {
-    var int b;
-}
+#fn void test2() {
+#    var int b;
+#}
