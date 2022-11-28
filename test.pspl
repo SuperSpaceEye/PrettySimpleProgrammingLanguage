@@ -15,6 +15,13 @@
 #    return(10);
 #}
 
+fn int test_fn(int a) {
+    var int b;
+    asgn(b, 20);
+    asgn(a, mul(a, b));
+    return(a);
+}
+
 fn void main() {
     #fn void test() {
     #    print("hello world");
@@ -47,16 +54,19 @@ fn void main() {
     #print(out);
 
     var int a;
-    asgn(a, 10);
     var int b;
-    asgn(b, 24);
     var int c;
+
+    asgn(a, 10);
+    asgn(b, 24);
     asgn(c, add(a, b));
     #asgn(c, 100);
 
     print_num(a);
     print_num(b);
     print_num(c);
+
+    return();
 }
 
 #fn void test2() {

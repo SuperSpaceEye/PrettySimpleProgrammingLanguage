@@ -155,9 +155,9 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                             arguments.emplace_back(arg_root->next_action);
                         }
 
-                        if (arguments.size() != std::get<2>(bfn.second).size()) {
-                            throw std::logic_error("Too many arguments");
-                        }
+//                        if (arguments.size() != std::get<2>(bfn.second).size()) {
+//                            throw std::logic_error("Too many arguments");
+//                        }
 
                         if (std::get<0>(bfn.second) != "return") {
                             auto new_root = std::make_shared<FunctionCallAction>(FunctionCallAction{
@@ -170,6 +170,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                             root->next_action = new_root;
                             root = new_root;
                         } else {
+                            if (arguments.size() == 0) {arguments.emplace_back(nullptr);}
                             auto new_root = std::make_shared<ReturnCall>(ReturnCall{
                                     BaseAction{ActionType::ReturnCall},
                                     std::shared_ptr<BaseAction>(arguments[0])});

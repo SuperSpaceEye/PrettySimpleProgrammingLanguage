@@ -10,7 +10,12 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
     auto tree = Parser::create_tree(res, debug);
 
     auto parts = compile_(tree);
-    if (debug) {display_code(parts[0].main_part);}
+    if (debug) {
+        for (int i = 0; i < parts.size(); i++) {
+            display_code(parts[i].main_part);
+            std::cout << "\n";
+        }
+    }
     configure_main_fn(parts[0]);
     link_custom_functions(parts);
 
@@ -63,6 +68,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
     for (int i = 0; i < tree_res.object_roots.size(); i++) {
         StackScope scope;
         int stack_size = 0;
+        bool has_args = false;
 
         if (i != tree_res.main_idx) {
             scope.push_scope();
@@ -81,14 +87,17 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
                 }
 
                 stack_size += _type_size;
-                scope.push(_type_size, stack_size-_type_size, 0, std::get<0>(arg));
+                scope.push(_type_size, stack_size-_type_size, std::get<2>(arg), std::get<0>(arg));
+                has_args = true;
             }
         }
+
+        int do_not_push = (has_args ? 1: 0);
 
         auto node = tree_res.object_roots[i];
         code_parts.emplace_back();
         code_parts.back().id = static_cast<FunctionDeclaration*>(node.get())->fn_id;
-        recursive_compile(code_parts.back(), scope, stack_size, node, i == tree_res.main_idx);
+        recursive_compile(code_parts.back(), scope, stack_size, node, i == tree_res.main_idx, do_not_push);
     }
 
     //so that main function would be the first.
@@ -99,7 +108,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
 
 void
 Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_size, std::shared_ptr<BaseAction> &node,
-                            bool is_main) {
+                            bool is_main, int &do_not_push_scope) {
     auto & main_part = part.main_part;
     while (node != nullptr) {
         switch (node->act_type) {
@@ -190,7 +199,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                             //If nested function call, then just recursively process it, as returned value will be on
                             //top of the stack.
                             auto rec_arg = arg;
-                            recursive_compile(part, scope, stack_size, rec_arg, false);
+                            recursive_compile(part, scope, stack_size, rec_arg, false, do_not_push_scope);
                             if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                 auto &arg_fn_call = *static_cast<FunctionCallAction*>(arg.get());
                                 main_part.emplace_back(ByteCode::PUSH);
@@ -202,6 +211,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                         }
                             break;
                         //If number const, then just push value saved in code to stack.
+                        //TODO numeric const can't be referenced. Needs to create a temp var.
+                        // TODO make check for numeric consts so that they can't be put as ref arg
                         case ActionType::NumericConst: {
                             auto & num_call = *static_cast<NumericConst*>(arg.get());
                             main_part.push_back(ByteCode::PUSH);
@@ -256,7 +267,9 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
             case ActionType::IfStatement:
                 break;
             case ActionType::StartLogicBlock:
-                scope.push_scope();
+                if (!do_not_push_scope) {
+                    scope.push_scope();
+                } else {do_not_push_scope--;}
                 break;
             case ActionType::EndLogicBlock: {
                 free_scope(scope, main_part, stack_size);
@@ -264,6 +277,15 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                 break;
             //if there is a return call then we assume that there is a return positional element at the top of the stack.
             case ActionType::ReturnCall: {
+                if (is_main) {
+                    main_part.emplace_back(ByteCode::GOTO);
+                    put_4_num(main_part, UINT32_MAX);
+                    break;
+                }
+
+                //TODO will not work correctly if returns from scope lower
+                // needs to pop scope until relative scope = 0
+
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
                 bool popped = false;
                 switch (ret_call.argument->act_type) {
@@ -272,21 +294,12 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                         auto return_data = scope.get_var(var_call.var_id);
                         auto first_scope_var = scope.get_min_pos_var_of_scope();
 
-//                        auto need_byte_len = type_size(std::get<3>(return_data));
+                        int needed_byte_len = std::get<0>(return_data);
 
-                        //if variable to return is first declared, then it just needs to not pop data when returning
-                        if (std::get<2>(return_data) == std::get<2>(first_scope_var)) {
-                            scope.push_one_scope_above(
-                                    std::get<0>(return_data),
-                                    std::get<1>(return_data),
-                                            0,
-                                            VariableType::INT);
-                            scope.delete_from_scope(std::get<2>(return_data));
-                        //if variable is not first declared, then it needs to swap data with first position, without
-                        //popping returning data.
+                        if (needed_byte_len == 4) {
+
                         } else {
-                            int needed_byte_len = std::get<0>(return_data);
-                            generate_code_to_return_var_from_scope(scope, needed_byte_len, main_part, stack_size, popped);
+
                         }
                     }
                         break;
@@ -373,6 +386,10 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
             }
                 break;
             case ByteCode::COPY_PUSH:
+                std::cout << "COPY_PUSH " << *((uint32_t*)&code[++i]) << " ";
+                i+=4;
+                std::cout << *((uint32_t*)&code[i]) << "\n";
+                i+=3;
                 break;
             case ByteCode::BUILTIN_CALL: {
                 std::cout << "BUILTIN_CALL " << std::get<0>(builtin_functions_id_names[*((uint32_t*)&code[++i])]) << "\n";
@@ -380,8 +397,8 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
             }
                 break;
             case ByteCode::GOTO:
-                break;
-            case ByteCode::EXIT:
+                std::cout << "GOTO " << *((uint32_t*)&code[++i]) << "\n";
+                i+=3;
                 break;
             case ByteCode::COND_GOTO:
                 break;

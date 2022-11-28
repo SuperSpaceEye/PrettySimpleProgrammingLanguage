@@ -38,6 +38,14 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 break;
             case ActionType::FunctionCall: {
                 auto & fn_call = *static_cast<FunctionCallAction*>(root.get());
+
+                int num_needed_args = std::get<1>(scope.get_fn(fn_call.name_id)).size();
+                int num_actual_args = fn_call.arguments.size();
+
+                if (num_needed_args != num_actual_args) {
+                    throw std::logic_error("Num required arguments does not equal num given arguments");
+                }
+
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
                     auto arg = fn_call.arguments[i];
                     auto req_type = std::get<1>(scope.get_fn(fn_call.name_id))[i];
@@ -60,7 +68,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                             break;
                         case ActionType::NumericConst: {
                             auto & num_arg = *static_cast<NumericConst*>(arg.get());
-                            if (!(req_type == VariableType::B_ANY || req_type == VariableType::STRING)) {throw std::logic_error("Type of numeric const does not match type of required argument.");}
+                            if (!(req_type == VariableType::B_ANY || req_type == num_arg.type)) {throw std::logic_error("Type of numeric const does not match type of required argument.");}
                         }
                             break;
                         case ActionType::StringConst: {

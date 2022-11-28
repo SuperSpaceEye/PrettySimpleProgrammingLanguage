@@ -11,7 +11,6 @@
 // COPY_PUSH pos, num - pushes {num} bytes, and copies {num} bytes from {pos}
 // BUILTIN_CALL num_fn - calls builtin function. Arguments are gotten from stack.
 // GOTO pos - moves execution pointer to position in bytecode. If pos == UINT32_MAX, then stop execution and exit
-// EXIT - stops the execution of bytecode
 // COND_GOTO cond_result_pos pos_true pos_false - gets 4 bytes from stack's cond_result_pos, if > 0, then goto to pos_true, if == 0 then goto to pos_false
 enum class ByteCode:uint8_t {
     PUSH,
@@ -20,7 +19,6 @@ enum class ByteCode:uint8_t {
     COPY_PUSH,
     BUILTIN_CALL,
     GOTO,
-    EXIT,
     COND_GOTO,
 };
 
