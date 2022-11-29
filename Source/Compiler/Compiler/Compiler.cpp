@@ -136,6 +136,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                 auto & fn_call = *static_cast<FunctionCallAction*>(node.get());
 
                 if (fn_call.fn_type == FunctionType::UserFunction) {
+                    main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
                     part.custom_function_calls.emplace_back();
 
                     main_part.emplace_back(ByteCode::PUSH);
@@ -156,6 +157,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                             uint32_t var_pos = std::get<1>(data);
                             //if var is reference, then function will modify stack pos directly.
                             //if ref of b_any then must also place type information
+                            //TODO right now ref is local. Should be global
                             if (arg_is_ref(fn_call, i)) {
                                 main_part.emplace_back(ByteCode::PUSH);
                                 put_4_num(main_part, 4);
@@ -245,9 +247,13 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                     auto needed_byte_len = type_size(fn_call.return_type);
                     bool popped = false;
 
+                    needed_byte_len = (needed_byte_len == 8 ? 4: needed_byte_len);
                     //if not 0, then it must swap result with the top's scope position
                     //then it must calculate how much values it must pop.
                     if (needed_byte_len != 0) {
+                        scope.push(needed_byte_len, stack_size, 0, VariableType::UINT);
+                        stack_size+=needed_byte_len;
+
                         generate_code_to_return_var_from_scope(scope, needed_byte_len, main_part, stack_size, popped);
                     }
                     if (!popped) {free_scope(scope, main_part, stack_size);}
@@ -255,6 +261,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                     main_part.emplace_back(ByteCode::GOTO);
                     part.custom_function_calls.back().pos_to_function_val = main_part.size();
                     put_4_num(main_part, 0);
+                    main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
                 }
             }
                 break;
@@ -285,6 +292,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
 
                 //TODO will not work correctly if returns from scope lower
                 // needs to pop scope until relative scope = 0
+                //TODO must use rel_goto instead of absolute
 
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
                 bool popped = false;
@@ -329,7 +337,7 @@ Compiler::generate_code_to_return_var_from_scope(StackScope &scope, int needed_b
                                                  int &stack_size, bool &popped) {
     bcode.emplace_back(ByteCode::SWAP);
     put_4_num(bcode, std::get<1>(scope.get_min_pos_var_of_scope()));
-    put_4_num(bcode, stack_size);
+    put_4_num(bcode, stack_size-needed_byte_len);
     put_4_num(bcode, needed_byte_len);
 
     int scope_total = scope.get_current_total();
@@ -399,6 +407,12 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
             case ByteCode::GOTO:
                 std::cout << "GOTO " << *((uint32_t*)&code[++i]) << "\n";
                 i+=3;
+                break;
+            case ByteCode::PUSH_STACK_SCOPE:
+                std::cout << "PUSH_STACK_SCOPE\n";
+                break;
+            case ByteCode::POP_STACK_SCOPE:
+                std::cout << "POP_STACK_SCOPE\n";
                 break;
             case ByteCode::COND_GOTO:
                 break;

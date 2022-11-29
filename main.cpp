@@ -8,6 +8,7 @@
 #include <fstream>
 
 #include "Source/Compiler/Compiler/Compiler.h"
+#include "Source/VirtualMachine/VirtualMachine.h"
 
 std::vector<std::string> open_files(const std::vector<std::string>& file_paths);
 static std::vector<std::string> read_arguments(int argc, char *argv[]);
@@ -24,6 +25,10 @@ int main(int argc, char *argv[]) {
     }
 
     auto code = Compiler::compile(data, true);
+
+    VirtualMachine vm{};
+
+    vm.execute(code, false);
 
     return 0;
 }

@@ -8,51 +8,17 @@
 #    print_num(c);
 #}
 
-#fn int test_fn() {
-#    fn void get_ten() {
-#        var int a;
-#    }
-#    return(10);
+#fn int test_fn(int a) {
+#    var int b;
+#    asgn(b, 20);
+#    asgn(a, mul(a, b));
+#    return(a);
 #}
 
-fn int test_fn(int a) {
-    var int b;
-    asgn(b, 20);
-    asgn(a, mul(a, b));
-    return(a);
-}
+
+
 
 fn void main() {
-    #fn void test() {
-    #    print("hello world");
-    #}
-    #test();
-
-    #var int a;
-    #var int b;
-    #var int c;
-    #var float e;
-
-    #asgn(a, 10);
-    #asgn(b, 20);
-    #asgn(c, add(a, b));
-    #asgn(c, mul(c, b));
-    #asgn(c, user_add(a, b, c))
-    #asgn(e, 10.4);
-    #asgn(e, user_add(a, b, to_int(e)));
-
-    #var string out;
-    #concat(out, "Result number: ")
-    #concat(out, to_str(a));
-    #concat(out, " ");
-    #concat(out, to_str(b));
-    #concat(out, " ");
-    #concat(out, to_str(c));
-    #concat(out, " ");
-    #concat(out, to_str(e));
-
-    #print(out);
-
     var int a;
     var int b;
     var int c;
@@ -60,15 +26,8 @@ fn void main() {
     asgn(a, 10);
     asgn(b, 24);
     asgn(c, add(a, b));
-    #asgn(c, 100);
 
     print_num(a);
     print_num(b);
     print_num(c);
-
-    return();
 }
-
-#fn void test2() {
-#    var int b;
-#}

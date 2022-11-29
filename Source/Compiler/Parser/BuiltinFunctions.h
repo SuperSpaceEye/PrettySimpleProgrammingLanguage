@@ -7,6 +7,10 @@
 
 #include <vector>
 #include <string>
+#include <tuple>
+
+
+#include "VariableType.h"
 
 enum class BuiltinIDS{
     ASGN,
@@ -38,6 +42,7 @@ enum class BuiltinIDS{
     TO_FLOAT,
     RETURN,
     INPUT,
+    PRINT_NUM,
 
     //TODO
 

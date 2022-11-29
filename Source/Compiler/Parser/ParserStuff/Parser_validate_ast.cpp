@@ -56,6 +56,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                             if (!(req_type == VariableType::B_ANY || scope.get_var_type(var_call.var_id) == req_type)) {
                                 throw std::logic_error("Type of function argument doesn't match required type");
                             }
+                            var_call.type = scope.get_var_type(var_call.var_id);
                         }
                             break;
                         case ActionType::FunctionCall: {
