@@ -8,17 +8,22 @@
 #    print_num(c);
 #}
 
+#fn int add_hundred(int a) {
+#    var int temp;
+#    asgn(temp, add(a, 100));
+#    return(temp);
+#}
 
 fn void main() {
     var int a;
     var int b;
-    var uint c;
+    var int c;
 
     asgn(a, 10);
-    asgn(b, 10);
-    asgn(c, eq(a, b));
+    asgn(b, 50);
+    asgn(c, add_hundred(a));
 
     print_num(a);
     print_num(b);
-    print_num(to_int(c));
+    print_num(c);
 }

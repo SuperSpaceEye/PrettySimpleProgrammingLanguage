@@ -136,6 +136,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                 auto & fn_call = *static_cast<FunctionCallAction*>(node.get());
 
                 if (fn_call.fn_type == FunctionType::UserFunction) {
+                    scope.push_scope_level();
+
                     main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
                     part.custom_function_calls.emplace_back();
 
@@ -251,6 +253,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                     //if not 0, then it must swap result with the top's scope position
                     //then it must calculate how much values it must pop.
                     if (needed_byte_len != 0) {
+                        //if builtin return type is not void, then it will push 4 bytes as an answer.
                         scope.push(needed_byte_len, stack_size, 0, VariableType::UINT);
                         stack_size+=needed_byte_len;
 
@@ -294,6 +297,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
                 // needs to pop scope until relative scope = 0
                 //TODO must use rel_goto instead of absolute
 
+                scope.collapse_to_scope_level();
+
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
                 bool popped = false;
                 switch (ret_call.argument->act_type) {
@@ -304,18 +309,27 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, int &stack_si
 
                         int needed_byte_len = std::get<0>(return_data);
 
-                        if (needed_byte_len == 4) {
-
-                        } else {
-
+                        if (needed_byte_len != 0) {
+                            //pointer to return position can be easily aligned with return type
+                            if (needed_byte_len == 4) {
+                                //TODO 1. swap ret_pos (first) with return var (whatever)
+                                //     2. swap ret_pos (whatever) to the place directly below ret_pos
+                                //     3. pop scope without popping return var and ret_pos
+                                //     4. execute call rel_goto
+                                //     5. after returning, pop ret_pos
+                            } else {
+                                //TODO
+                            }
                         }
                     }
                         break;
-                    case ActionType::FunctionCall:
+                    case ActionType::FunctionCall: {
+                        auto & fn_call = *static_cast<FunctionCallAction*>(ret_call.argument.get());
+                    }
                         break;
                     case ActionType::StringConst:
                         break;
-                    case ActionType::ReturnCall:
+                    case ActionType::NumericConst:
                         break;
                 }
 

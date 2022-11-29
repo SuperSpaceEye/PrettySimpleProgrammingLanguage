@@ -16,11 +16,26 @@ struct StackScope {
     //num, pos, id, type
     std::vector<std::vector<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>>> scope{{}};
 
+    //user function can have scopes inside it. To properly return from it, all allocated stack values
+    //in scope should be removed.
+    std::vector<int> scope_level{0};
+
     void push_scope() {scope.emplace_back();}
     std::vector<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>> pop_scope() {
         auto temp_scope = scope.back();
         scope.pop_back();
         return temp_scope;
+    }
+    void push_scope_level() {scope_level.emplace_back(scope.size());}
+    void pop_scope_level() {scope_level.pop_back();}
+    int get_current_scope_level() {return scope.size();}
+    int get_entered_scope_level() {return scope_level.back();}
+    void collapse_to_scope_level(){
+        for (int scope_l = scope.size()-1; scope_l > scope_level.back(); scope_l++) {
+            scope[scope_l-1].insert(scope[scope_l-1].end(), scope[scope_l].begin(), scope[scope_l].end());
+            scope.pop_back();
+        }
+        scope_level.pop_back();
     }
     void push(uint32_t num, uint32_t pos, uint32_t id, VariableType type) {
         scope.back().emplace_back(num, pos, id, type);

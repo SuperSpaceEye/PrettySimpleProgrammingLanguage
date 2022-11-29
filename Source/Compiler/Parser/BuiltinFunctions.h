@@ -79,7 +79,7 @@ const std::vector<std::tuple<std::string, VariableType, std::vector<std::pair<Va
         {"to_int",   VariableType::INT,   {{VariableType::B_ANY,  false}}},
         {"to_uint",  VariableType::UINT,  {{VariableType::B_ANY,  false}}},
         {"to_float", VariableType::FLOAT, {{VariableType::B_ANY,  false}}},
-        {"return",   VariableType::VOID,  {{VariableType::B_ANY,  true}}},
+        {"return",   VariableType::VOID,  {{VariableType::B_ANY,  false}}},
         {"input",    VariableType::STRING,{{VariableType::STRING, false}}},
         {"print_num",VariableType::VOID,  {{VariableType::INT,    false}}},
 };
