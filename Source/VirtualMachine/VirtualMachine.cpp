@@ -4,6 +4,89 @@
 
 #include "VirtualMachine.h"
 
+#define NO_REF_OPERATION(operation) \
+auto arg1_val = get_4_num(stack, stack.size()-16); \
+auto arg1_type = (VariableType)get_4_num(stack, stack.size()-12);\
+auto arg2_val = get_4_num(stack, stack.size()-8); \
+auto arg2_type = (VariableType)get_4_num(stack, stack.size()-4);\
+\
+uint32_t result;\
+arg2_val = cast_to_type(arg2_val, arg2_type, arg1_type);\
+                                    \
+switch (arg1_type) {\
+    case VariableType::INT: {\
+        int32_t temp = *(int32_t*)&arg1_val operation *(int32_t*)&arg2_val;\
+        result = *(uint32_t*)&temp;\
+    }\
+    break;\
+    case VariableType::UINT:\
+        result = arg1_val operation arg2_val;\
+        break;\
+    case VariableType::FLOAT: {\
+        float temp = *(float*)&arg1_val operation *(float*)&arg2_val;\
+        result = *(uint32_t*)&temp;\
+    }\
+        break;\
+    }\
+    \
+    stack.resize(stack.size()+4);\
+    *((uint32_t*)&stack[stack.size()-4]) = result; \
+
+#define NO_REF_LOGIC_OPERATION(operation) \
+auto arg1_val = get_4_num(stack, stack.size()-16); \
+auto arg1_type = (VariableType)get_4_num(stack, stack.size()-12);\
+auto arg2_val = get_4_num(stack, stack.size()-8); \
+auto arg2_type = (VariableType)get_4_num(stack, stack.size()-4);\
+\
+arg2_val = cast_to_type(arg2_val, arg2_type, arg1_type);\
+                                    \
+switch (arg1_type) {\
+    case VariableType::INT: {\
+        arg1_val = *(int32_t*)&arg1_val operation *(int32_t*)&arg2_val;\
+    }\
+    break;\
+    case VariableType::UINT:\
+        arg1_val = arg1_val operation arg2_val;\
+        break;\
+    case VariableType::FLOAT: {\
+        arg1_val = *(float*)&arg1_val operation *(float*)&arg2_val;\
+    }\
+        break;\
+    }\
+    \
+    stack.resize(stack.size()+4);\
+    *((uint32_t*)&stack[stack.size()-4]) = arg1_val;\
+
+#define REF_OPERATION(operation) \
+auto arg1_pos = get_4_num(stack, stack.size()-16);\
+auto arg1_type = (VariableType)get_4_num(stack, stack.size()-12);\
+auto arg2_val = get_4_num(stack, stack.size()-8);\
+auto arg2_type = (VariableType)get_4_num(stack, stack.size()-4);\
+\
+auto arg1_val = get_4_num(stack, arg1_pos);\
+\
+uint32_t result;\
+arg2_val = cast_to_type(arg2_val, arg2_type, arg1_type);\
+\
+switch (arg1_type) {\
+    case VariableType::INT: {\
+        int32_t temp = *(int32_t*)&arg1_val operation *(int32_t*)&arg2_val;\
+        result = *(uint32_t*)&temp;\
+    }\
+    break;\
+    case VariableType::UINT:\
+        result = arg1_val operation arg2_val;\
+        break;\
+    case VariableType::FLOAT: {\
+        float temp = *(float*)&arg1_val operation *(float*)&arg2_val;\
+        result = *(uint32_t*)&temp;\
+    }\
+    break;\
+}\
+\
+*((uint32_t*)&stack[arg1_pos]) = result;\
+
+
 void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
     while (cur < code.size()-1) {
         auto word = code[cur];
@@ -100,80 +183,82 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
             *((uint32_t*)&stack[arg1_pos]) = num;
         }
             break;
-        case BuiltinIDS::ADD: {
-            auto arg1_val = get_4_num(stack, stack.size()-16);
-            auto arg1_type = (VariableType)get_4_num(stack, stack.size()-12);
-            auto arg2_val = get_4_num(stack, stack.size()-8);
-            auto arg2_type = (VariableType)get_4_num(stack, stack.size()-4);
+        case BuiltinIDS::ASGN_ADD: {REF_OPERATION(+)}break;
+        case BuiltinIDS::ASGN_SUB: {REF_OPERATION(-)}break;
+        case BuiltinIDS::ASGN_MUL: {REF_OPERATION(*)}break;
+        case BuiltinIDS::ASGN_DIV: {REF_OPERATION(/)}break;
 
-            uint32_t result;
-            //cast to arg1 type
-            arg2_val = cast_to_type(arg2_val, arg2_type, arg1_type);
+        case BuiltinIDS::ADD: {NO_REF_OPERATION(+)}break;
+        case BuiltinIDS::SUB: {NO_REF_OPERATION(-)}break;
+        case BuiltinIDS::MUL: {NO_REF_OPERATION(*)}break;
+        case BuiltinIDS::DIV: {NO_REF_OPERATION(/)}break;
 
-            switch (arg1_type) {
+        case BuiltinIDS::AND:         {NO_REF_LOGIC_OPERATION(&&)}break;
+        case BuiltinIDS::OR:          {NO_REF_LOGIC_OPERATION(||)}break;
+        case BuiltinIDS::EQUALS:      {NO_REF_LOGIC_OPERATION(==)}break;
+        case BuiltinIDS::NOT_EQUALS:  {NO_REF_LOGIC_OPERATION(!=)}break;
+        case BuiltinIDS::MORE_EQUALS: {NO_REF_LOGIC_OPERATION(>=)}break;
+        case BuiltinIDS::LESS_EQUALS: {NO_REF_LOGIC_OPERATION(<=)}break;
+        case BuiltinIDS::MORE:        {NO_REF_LOGIC_OPERATION(>)}break;
+        case BuiltinIDS::LESS:        {NO_REF_LOGIC_OPERATION(<)}break;
+
+        case BuiltinIDS::NOT: {
+            auto arg_val = get_4_num(stack, stack.size()-8);
+            auto arg_type = (VariableType)(get_4_num(stack, stack.size()-4));
+
+            switch (arg_type) {
                 case VariableType::INT: {
-                    int32_t temp = *(int32_t*)&arg1_val + *(int32_t*)&arg2_val;
-                    result = *(uint32_t*)&temp;
+                    arg_val = !*(int32_t*)&arg_val;
                 }
-                    break;
+                break;
                 case VariableType::UINT:
-                    result = arg1_val + arg2_val;
+                    arg_val = !arg_val;
                     break;
                 case VariableType::FLOAT: {
-                    float temp = *(float*)&arg1_val + *(float*)&arg2_val;
-                    result = *(uint32_t*)&temp;
+                    arg_val = !*(float*)&arg_val;
                 }
-                    break;
+                break;
             }
 
             stack.resize(stack.size()+4);
-            *((uint32_t*)&stack[stack.size()-4]) = result;
-//            *((uint32_t*)&stack[stack.size()-4]) = (uint32_t)arg1_type;
-        }
-            break;
-        case BuiltinIDS::SUB:
-            break;
-        case BuiltinIDS::MUL:
-            break;
-        case BuiltinIDS::DIV:
-            break;
-        case BuiltinIDS::ASGN_ADD:
-            break;
-        case BuiltinIDS::SUB_ADD:
-            break;
-        case BuiltinIDS::MUL_ADD:
-            break;
-        case BuiltinIDS::DIV_ADD:
-            break;
-        case BuiltinIDS::AND:
-            break;
-        case BuiltinIDS::OR:
-            break;
-        case BuiltinIDS::EQUALS:
-            break;
-        case BuiltinIDS::NOT_EQUALS:
-            break;
-        case BuiltinIDS::NOT:
-            break;
-        case BuiltinIDS::MORE_EQUALS:
-            break;
-        case BuiltinIDS::LESS_EQUALS:
-            break;
-        case BuiltinIDS::MORE:
-            break;
-        case BuiltinIDS::LESS:
-            break;
+            *((uint32_t*)&stack[stack.size()-4]) = arg_val;
+        }break;
+
         case BuiltinIDS::CONCAT:
             break;
         case BuiltinIDS::TO_STR:
             break;
         case BuiltinIDS::PRINT:
             break;
-        case BuiltinIDS::TO_INT:
+        case BuiltinIDS::TO_INT: {
+            auto arg_val = get_4_num(stack, stack.size()-8);
+            auto arg_type = (VariableType)get_4_num(stack, stack.size()-4);
+
+            arg_val = cast_to_type(arg_val, arg_type, VariableType::INT);
+
+            stack.resize(stack.size()+4);
+            *((uint32_t*)&stack[stack.size()-4]) = arg_val;
+        }
             break;
-        case BuiltinIDS::TO_UINT:
+        case BuiltinIDS::TO_UINT: {
+            auto arg_val = get_4_num(stack, stack.size()-8);
+            auto arg_type = (VariableType)get_4_num(stack, stack.size()-4);
+
+            arg_val = cast_to_type(arg_val, arg_type, VariableType::UINT);
+
+            stack.resize(stack.size()+4);
+            *((uint32_t*)&stack[stack.size()-4]) = arg_val;
+        }
             break;
-        case BuiltinIDS::TO_FLOAT:
+        case BuiltinIDS::TO_FLOAT: {
+            auto arg_val = get_4_num(stack, stack.size()-8);
+            auto arg_type = (VariableType)get_4_num(stack, stack.size()-4);
+
+            arg_val = cast_to_type(arg_val, arg_type, VariableType::FLOAT);
+
+            stack.resize(stack.size()+4);
+            *((uint32_t*)&stack[stack.size()-4]) = arg_val;
+        }
             break;
         case BuiltinIDS::RETURN:
             break;

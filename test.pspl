@@ -8,26 +8,17 @@
 #    print_num(c);
 #}
 
-#fn int test_fn(int a) {
-#    var int b;
-#    asgn(b, 20);
-#    asgn(a, mul(a, b));
-#    return(a);
-#}
-
-
-
 
 fn void main() {
     var int a;
     var int b;
-    var int c;
+    var uint c;
 
     asgn(a, 10);
-    asgn(b, 24);
-    asgn(c, add(a, b));
+    asgn(b, 10);
+    asgn(c, eq(a, b));
 
     print_num(a);
     print_num(b);
-    print_num(c);
+    print_num(to_int(c));
 }
