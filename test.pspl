@@ -21,7 +21,8 @@ fn void main() {
 
     asgn(a, 10);
     asgn(b, 50);
-    asgn(c, add_hundred(a));
+    #asgn(c, add_hundred(a));
+    asgn(c, add(a, b));
 
     print_num(a);
     print_num(b);

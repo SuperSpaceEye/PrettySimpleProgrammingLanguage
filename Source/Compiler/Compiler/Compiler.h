@@ -96,13 +96,13 @@ class Compiler {
     static std::vector<FunctionPart> compile_(TreeResult &tree_res);
     static void display_code(std::vector<ByteCode> & code);
     static void
-    recursive_compile(FunctionPart &part, StackScope &scope, int &stack_size, std::shared_ptr<BaseAction> &node,
-                      bool is_main, int &do_not_push_scope);
-    static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode, int &stack_size);
+    recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
+                      int &do_not_push_scope);
+    static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode);
 
     static void
     generate_code_to_return_var_from_scope(StackScope &scope, int needed_byte_len, std::vector<ByteCode> &bcode,
-                                           int &stack_size, bool &popped);
+                                           bool &popped);
 
     static void configure_main_fn(FunctionPart & part) {}
     static void link_custom_functions(std::vector<FunctionPart> & parts);
