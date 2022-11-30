@@ -132,10 +132,11 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 auto & fn_call = *static_cast<FunctionCallAction*>(node.get());
 
                 if (fn_call.fn_type == FunctionType::UserFunction) {
-                    scope.push_scope_level();
 
                     main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
                     part.custom_function_calls.emplace_back();
+
+                    scope.push_scope_level();
 
                     main_part.emplace_back(ByteCode::PUSH);
                     put_4_num(main_part, 4);
@@ -144,6 +145,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     scope.push(4, scope.get_current_total(), 0, VariableType::INT);
                 }
 
+                main_part.emplace_back(ByteCode::START_ARGUMENTS);
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
                     auto & arg = fn_call.arguments[i];
                     switch (arg->act_type) {
@@ -156,46 +158,51 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                             //if ref of b_any then must also place type information
                             //TODO Reference to num should contain relative position in a scope, and scope level it is contained in
                             // so to get the value it should do:
-                            // stack_size - scope_size - sum(stack_scope[ref_var_level] to stack_scope[-1]) + rel_var_pos
+                            //  stack_scope[val_level] + rel_val
                             if (arg_is_ref(fn_call, i)) {
+                                if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                                    main_part.emplace_back(ByteCode::PUSH);
+                                    put_4_num(main_part, 4);
+                                    put_4_num(main_part, (uint32_t)var_call.type);
+                                    scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
+                                }
+
+                                //Pushing relative position of variable
                                 main_part.emplace_back(ByteCode::PUSH);
                                 put_4_num(main_part, 4);
                                 put_4_num(main_part, var_pos);
-                                scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
 
+                                //pushing current stack level
+                                main_part.emplace_back(ByteCode::PUSH_CURRENT_STACK_LEVEL);
+
+                                //Will push absolute pos while popping prev 2 numbers.
+                                main_part.emplace_back(ByteCode::GET_ABSOLUTE_POS);
+                                scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
+                            //if not ref, then make copy of stack variable
+                            } else {
                                 if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                     main_part.emplace_back(ByteCode::PUSH);
                                     put_4_num(main_part, 4);
                                     put_4_num(main_part, (uint32_t)var_call.type);
                                     scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
                                 }
-                            //if not ref, then make copy of stack variable
-                            } else {
+
                                 main_part.emplace_back(ByteCode::COPY_PUSH);
-                                if (var_size == 4) {
+//                                if (var_size == 4) {
                                     put_4_num(main_part, var_pos);
                                     put_4_num(main_part, var_size);
                                     scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
-                                } else if (var_size == 8) {
-                                    put_8_num(main_part, var_pos);
-                                    put_8_num(main_part, var_size);
-                                    scope.push(8, scope.get_current_total(), 0, VariableType::UINT);
-                                }
+//                                } else if (var_size == 8) {
+//                                    put_4_num(main_part, var_pos);
+//                                    put_4_num(main_part, var_size);
+//                                    scope.push(8, scope.get_current_total(), 0, VariableType::UINT);
+//                                }
 
-                                if (fn_call.required_arguments[i] == VariableType::B_ANY) {
-                                    main_part.emplace_back(ByteCode::PUSH);
-                                    put_4_num(main_part, 4);
-                                    put_4_num(main_part, (uint32_t)var_call.type);
-                                    scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
-                                }
+
                             }
                         }
                             break;
                         case ActionType::FunctionCall: {
-                            //If nested function call, then just recursively process it, as returned value will be on
-                            //top of the stack.
-                            auto rec_arg = arg;
-                            recursive_compile(part, scope, rec_arg, false, do_not_push_scope);
                             if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                 auto &arg_fn_call = *static_cast<FunctionCallAction*>(arg.get());
                                 main_part.emplace_back(ByteCode::PUSH);
@@ -203,6 +210,11 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                                 put_4_num(main_part, (uint32_t)arg_fn_call.return_type);
                                 scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
                             }
+
+                            //If nested function call, then just recursively process it, as returned value will be on
+                            //top of the stack.
+                            auto rec_arg = arg;
+                            recursive_compile(part, scope, rec_arg, false, do_not_push_scope);
                         }
                             break;
                         //If number const, then just push value saved in code to stack.
@@ -210,17 +222,17 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         // TODO make check for numeric consts so that they can't be put as ref arg
                         case ActionType::NumericConst: {
                             auto & num_call = *static_cast<NumericConst*>(arg.get());
-                            main_part.push_back(ByteCode::PUSH);
-                            put_4_num(main_part, 4);
-                            put_4_num(main_part, num_call.value);
-                            scope.push(4, scope.get_current_total(), 0, VariableType::INT);
-
                             if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                 main_part.emplace_back(ByteCode::PUSH);
                                 put_4_num(main_part, 4);
                                 put_4_num(main_part, (uint32_t)num_call.type);
                                 scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
                             }
+
+                            main_part.push_back(ByteCode::PUSH);
+                            put_4_num(main_part, 4);
+                            put_4_num(main_part, num_call.value);
+                            scope.push(4, scope.get_current_total(), 0, VariableType::INT);
                         }
                             break;
                         case ActionType::StringConst:
@@ -228,6 +240,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                             break;
                     }
                 }
+                main_part.emplace_back(ByteCode::END_ARGUMENTS);
                 //if builtin function, then popping of pushed stack values must be processed manually.
                 //if the function is user defined, popping of stack values will be handled by return call.
                 if (fn_call.fn_type == FunctionType::BuiltinFunction) {
@@ -247,6 +260,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                         generate_code_to_return_var_from_scope(scope, needed_byte_len, main_part, popped);
                     }
+                    main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
                     if (!popped) { free_scope(scope, main_part);}
                 } else {
                     main_part.emplace_back(ByteCode::GOTO);
@@ -265,12 +279,15 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
             case ActionType::IfStatement:
                 break;
             case ActionType::StartLogicBlock:
+                //TODO think about it
                 if (!do_not_push_scope) {
                     scope.push_scope();
+                    main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
                 } else {do_not_push_scope--;}
                 break;
             case ActionType::EndLogicBlock: {
                 free_scope(scope, main_part);
+                main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
             }
                 break;
             //if there is a return call then we assume that there is a return positional element at the top of the stack.
@@ -416,6 +433,11 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
             case ByteCode::POP_STACK_SCOPE:
                 std::cout << "POP_STACK_SCOPE\n";
                 break;
+            case ByteCode::PUSH_CURRENT_STACK_LEVEL:
+                std::cout << "PUSH_CURRENT_STACK_LEVEL\n";
+                break;
+            case ByteCode::GET_ABSOLUTE_POS:
+                std::cout << "GET_ABSOLUTE_POS\n";
             case ByteCode::COND_GOTO:
                 break;
         }

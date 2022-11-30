@@ -5,10 +5,10 @@
 #include "VirtualMachine.h"
 
 #define NO_REF_OPERATION(operation) \
-auto arg1_val = get_4_num(stack, stack.size()-16); \
-auto arg1_type = (VariableType)get_4_num(stack, stack.size()-12);\
-auto arg2_val = get_4_num(stack, stack.size()-8); \
-auto arg2_type = (VariableType)get_4_num(stack, stack.size()-4);\
+auto arg1_type = (VariableType)get_4_num(stack, stack.size()-16); \
+auto arg1_val  = get_4_num(stack, stack.size()-12);\
+auto arg2_type = (VariableType)get_4_num(stack, stack.size()-8); \
+auto arg2_val  = get_4_num(stack, stack.size()-4);\
 \
 uint32_t result;\
 arg2_val = cast_to_type(arg2_val, arg2_type, arg1_type);\
@@ -33,13 +33,12 @@ switch (arg1_type) {\
     *((uint32_t*)&stack[stack.size()-4]) = result; \
 
 #define NO_REF_LOGIC_OPERATION(operation) \
-auto arg1_val = get_4_num(stack, stack.size()-16); \
-auto arg1_type = (VariableType)get_4_num(stack, stack.size()-12);\
-auto arg2_val = get_4_num(stack, stack.size()-8); \
-auto arg2_type = (VariableType)get_4_num(stack, stack.size()-4);\
+auto arg1_type = (VariableType)get_4_num(stack, stack.size()-16); \
+auto arg1_val  = get_4_num(stack, stack.size()-12);\
+auto arg2_type = (VariableType)get_4_num(stack, stack.size()-8); \
+auto arg2_val  = get_4_num(stack, stack.size()-4);\
 \
 arg2_val = cast_to_type(arg2_val, arg2_type, arg1_type);\
-                                    \
 switch (arg1_type) {\
     case VariableType::INT: {\
         arg1_val = *(int32_t*)&arg1_val operation *(int32_t*)&arg2_val;\
@@ -58,11 +57,11 @@ switch (arg1_type) {\
     *((uint32_t*)&stack[stack.size()-4]) = arg1_val;\
 
 #define REF_OPERATION(operation) \
-auto arg1_pos = get_4_num(stack, stack.size()-16);\
-auto arg1_type = (VariableType)get_4_num(stack, stack.size()-12);\
-auto arg2_val = get_4_num(stack, stack.size()-8);\
-auto arg2_type = (VariableType)get_4_num(stack, stack.size()-4);\
-\
+auto arg1_type = (VariableType)get_4_num(stack, stack.size()-16);\
+auto arg1_pos = get_4_num(stack, stack.size()-12); \
+auto arg2_type = (VariableType)get_4_num(stack, stack.size()-8);\
+auto arg2_val  = get_4_num(stack, stack.size()-4);               \
+                                 \
 auto arg1_val = get_4_num(stack, arg1_pos);\
 \
 uint32_t result;\
@@ -156,6 +155,32 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 stack_scope.pop_back();
                 cur++;
                 break;
+            case ByteCode::PUSH_CURRENT_STACK_LEVEL:
+                stack.resize(stack.size()+4);
+                *((uint32_t*)&stack[stack.size()-4]) = stack_scope.back();
+                cur++;
+                break;
+            case ByteCode::GET_ABSOLUTE_POS: {
+                auto rel_var_pos = get_4_num(stack, stack.size()-8);
+                auto var_level = get_4_num(stack, stack.size()-4);
+
+                auto abs_pos = var_level + rel_var_pos;
+
+                stack.resize(stack.size()-4);
+
+                *((uint32_t*)&stack[stack.size()-4]) = abs_pos;
+                cur++;
+            }
+                break;
+            case ByteCode::START_ARGUMENTS:
+                temp_levels.emplace_back(stack.size());
+                cur++;
+                break;
+            case ByteCode::END_ARGUMENTS:
+                stack_scope.emplace_back(temp_levels.back());
+                temp_levels.pop_back();
+                cur++;
+                break;
         }
 
         if (debug) {
@@ -174,10 +199,10 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
 
     switch (id) {
         case BuiltinIDS::ASGN: {
-            auto arg1_pos = get_4_num(stack, stack.size()-16);
-            auto arg1_type = (VariableType)(get_4_num(stack, stack.size()-12));
-            auto arg2_val = get_4_num(stack, stack.size()-8);
-            auto arg2_type = (VariableType)(get_4_num(stack, stack.size()-4));
+            auto arg1_type = (VariableType)get_4_num(stack, stack.size()-16);
+            auto arg1_pos = get_4_num(stack, stack.size()-12);
+            auto arg2_type = (VariableType)get_4_num(stack, stack.size()-8);
+            auto arg2_val = get_4_num(stack, stack.size()-4);
 
             uint32_t num = cast_to_type(arg2_val, arg2_type, arg1_type);
             *((uint32_t*)&stack[arg1_pos]) = num;

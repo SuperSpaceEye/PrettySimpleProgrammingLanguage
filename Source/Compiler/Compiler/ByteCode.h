@@ -15,6 +15,8 @@
 // REL_GOTO - gets pos number from the top of the stack and goes to it
 // PUSH_STACK_SCOPE - for user functions
 // POP_STACK_SCOPE - for user functions
+// PUSH_CURRENT_STACK_LEVEL - pushes to the back of the stack 4 byte stack level num
+// GET_ABSOLUTE_POS - in the stack should be two 4 byte nums: relative var pos and stack_level. It will these two numbers, do some math, pop them and push absolute position
 enum class ByteCode:uint8_t {
     PUSH,
     POP,
@@ -25,6 +27,10 @@ enum class ByteCode:uint8_t {
     COND_GOTO,
     PUSH_STACK_SCOPE,
     POP_STACK_SCOPE,
+    PUSH_CURRENT_STACK_LEVEL,
+    GET_ABSOLUTE_POS,
+    START_ARGUMENTS,
+    END_ARGUMENTS,
 };
 
 #endif //ANOTHERPROGRAMMINGLANGUAGE_BYTECODE_H
