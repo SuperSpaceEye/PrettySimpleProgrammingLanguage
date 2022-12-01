@@ -110,13 +110,13 @@ struct FunctionPart {
     std::vector<uint32_t> calls_from_custom;
     std::vector<uint32_t> parent_end_of_fn_call;
 
-    int len_before;
-    int id;
+    int len_before = 0;
+    int id = -1;
 };
 
 class Compiler {
     static std::vector<FunctionPart> compile_(TreeResult &tree_res);
-    static void display_code(std::vector<ByteCode> & code);
+    static void display_code(std::vector<ByteCode> &code, int &num);
     static void
     recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
                       int &do_not_push_scope);

@@ -11,8 +11,10 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
 
     auto parts = compile_(tree);
     if (debug) {
+        int num = 0;
+
         for (int i = 0; i < parts.size(); i++) {
-            display_code(parts[i].fn_code);
+            display_code(parts[i].fn_code, num);
             std::cout << "\n";
         }
     }
@@ -130,7 +132,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 main_part.emplace_back(ByteCode::START_ARGUMENTS);
                 if (fn_call.fn_type == FunctionType::UserFunction) {
-
                     main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
 
                     scope.push_scope_level();
@@ -139,6 +140,9 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     put_4_num(main_part, 4);
                     part.calls_from_custom.emplace_back(main_part.size());
                     put_4_num(main_part, 0);
+                    // TODO idfk why there should be a scope for user functions to work properly.
+                    //  I probably fucked up scoping but it works so idfc right now.
+                    scope.push_scope();
                     scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
                 }
 
@@ -151,23 +155,14 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                             uint32_t var_size = std::get<0>(data);
 
-
-
-//                            int var_pos = std::get<1>(data)
-//                                    + scope.get_total_until_incl_scope(scope_level)
-//                                    - scope.get_total_until_incl_scope()_scope(scope.scope.size()-2);
-
                             int var_pos = -scope.get_total_between(scope_level, scope.scope.size()-
-                                    (scope.scope.size()-2 != scope_level ? 1: 2))
-                                    + std::get<1>(data)
-                                    ;
-//                            var_pos = std::get<1>(data);
+                                                                                (scope.scope.size()-2 != scope_level ? 1: 2))
+                                          + std::get<1>(data)
+                            ;
 
                             //if var is reference, then function will modify stack pos directly.
                             //if ref of b_any then must also place type information
-                            //TODO Reference to num should contain relative position in a scope, and scope level it is contained in
-                            // so to get the value it should do:
-                            //  stack_scope[val_level] + rel_val
+
                             if (arg_is_ref(fn_call, i)) {
                                 if (fn_call.required_arguments[i] == VariableType::B_ANY) {
                                     main_part.emplace_back(ByteCode::PUSH);
@@ -274,6 +269,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 } else {
                     scope.push_one_scope_above(type_size(fn_call.return_type), 0, 0, VariableType::UINT);
                     scope.pop_scope();
+                    scope.pop_scope();
 
                     main_part.emplace_back(ByteCode::GOTO);
                     part.calls_to_custom.emplace_back(main_part.size(), fn_call.fn_id);
@@ -312,8 +308,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     break;
                 }
 
-                //TODO must use rel_goto instead of absolute
-
                 auto times = scope.collapse_to_scope_level();
 
                 for (int i = 0; i < times; i++) {
@@ -322,65 +316,65 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
                 bool popped = false;
-                switch (ret_call.argument->act_type) {
-                    case ActionType::VariableCall: {
-                        auto & var_call = *static_cast<VariableCall*>(ret_call.argument.get());
-                        auto return_data = scope.get_var(var_call.var_id);
-                        auto first_scope_var = scope.get_min_pos_var_of_scope();
 
-                        int needed_byte_len = std::get<0>(return_data.first);
+                main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
+                if (ret_call.argument.get() != nullptr) {
+                    switch (ret_call.argument->act_type) {
+                        case ActionType::VariableCall: {
+                            auto &var_call = *static_cast<VariableCall *>(ret_call.argument.get());
+                            auto return_data = scope.get_var(var_call.var_id);
+                            auto first_scope_var = scope.get_min_pos_var_of_scope();
 
-                        main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
+                            int needed_byte_len = std::get<0>(return_data.first);
 
-                        if (needed_byte_len != 0) {
-                            //pointer to return position can be easily aligned with return type
-                            if (needed_byte_len == 4) {
-                                //TODO 1. swap ret_pos (first) with return var (whatever)
-                                //     2. swap ret_pos (whatever) to the place directly below ret_pos
-                                //     3. pop scope without popping return var and ret_pos
-                                //     4. execute call rel_goto
-                                //     5. after returning, pop ret_pos
-                                main_part.emplace_back(ByteCode::SWAP);
-                                put_4_num(main_part, 0);
-                                put_4_num(main_part, std::get<1>(return_data.first));
-                                put_4_num(main_part, 4);
-
-                                //if return variable and positional argument are not already aligned
-                                if (std::get<1>(return_data) != 4) {
+                            if (needed_byte_len != 0) {
+                                //pointer to return position can be easily aligned with return type
+                                if (needed_byte_len == 4) {
+                                    //TODO 1. swap ret_pos (first) with return var (whatever)
+                                    //     2. swap ret_pos (whatever) to the place directly below ret_pos
+                                    //     3. pop scope without popping return var and ret_pos
+                                    //     4. execute call rel_goto
+                                    //     5. after returning, pop ret_pos
                                     main_part.emplace_back(ByteCode::SWAP);
-                                    put_4_num(main_part, 4);
+                                    put_4_num(main_part, 0);
                                     put_4_num(main_part, std::get<1>(return_data.first));
                                     put_4_num(main_part, 4);
-                                }
 
-                                scope.push_one_scope_above(return_data.first);
-                                scope.scope.back().erase(scope.scope.back().begin());
-                            } else {
-                                //TODO
+                                    //if return variable and positional argument are not already aligned
+                                    if (std::get<1>(return_data) != 4) {
+                                        main_part.emplace_back(ByteCode::SWAP);
+                                        put_4_num(main_part, 4);
+                                        put_4_num(main_part, std::get<1>(return_data.first));
+                                        put_4_num(main_part, 4);
+                                    }
+
+                                    scope.push_one_scope_above(return_data.first);
+                                    scope.scope.back().erase(scope.scope.back().begin());
+                                } else {
+                                    //TODO
+                                }
                             }
                         }
-
-                        auto num = scope.get_current_total() - 4;
-                        if (num != 0) {
-                            main_part.emplace_back(ByteCode::POP);
-                            put_4_num(main_part, num);
+                            break;
+                        case ActionType::FunctionCall: {
+                            auto &fn_call = *static_cast<FunctionCallAction *>(ret_call.argument.get());
                         }
-
-                        main_part.emplace_back(ByteCode::REL_GOTO);
-                        scope.pop_scope();
+                            break;
+                        case ActionType::StringConst:
+                            break;
+                        case ActionType::NumericConst:
+                            break;
                     }
-                        break;
-                    case ActionType::FunctionCall: {
-                        auto & fn_call = *static_cast<FunctionCallAction*>(ret_call.argument.get());
-                    }
-                        break;
-                    case ActionType::StringConst:
-                        break;
-                    case ActionType::NumericConst:
-                        break;
                 }
 
-                if (!popped) { free_scope(scope, main_part);}
+                auto num = scope.get_current_total() - 4;
+                if (num != 0) {
+                    main_part.emplace_back(ByteCode::POP);
+                    put_4_num(main_part, num);
+                }
+
+                main_part.emplace_back(ByteCode::REL_GOTO);
+                scope.pop_scope();
             }
                 break;
 //            case ActionType::NumericConst:
@@ -430,66 +424,66 @@ void Compiler::free_scope(StackScope &scope, std::vector<ByteCode> &bcode) {
 }
 
 
-void Compiler::display_code(std::vector<ByteCode> & code) {
+void Compiler::display_code(std::vector<ByteCode> &code, int &num) {
     for (int i = 0; i < code.size(); i++) {
         switch (code[i]) {
             case ByteCode::PUSH: {
-                std::cout << "PUSH " << *((int32_t*)&code[++i]);
+                std::cout << num << ". PUSH " << *((int32_t*)&code[++i]);
                 i+=4;
                 std::cout << " " << *((int32_t*)&code[i]) << "\n";
-                i+=3;
+                i+=3; num+=9;
             }
                 break;
             case ByteCode::POP: {
-                std::cout << "POP  " << *((int32_t*)&code[++i]) << "\n";
-                i+=3;
+                std::cout << num << ". POP  " << *((int32_t*)&code[++i]) << "\n";
+                i+=3; num+=5;
             }
                 break;
             case ByteCode::SWAP: {
-                std::cout << "SWAP " << *((int32_t*)&code[++i]) << " ";
+                std::cout << num << ". SWAP " << *((int32_t*)&code[++i]) << " ";
                 i+=4;
                 std::cout << " " << *((int32_t*)&code[i]) << " ";
                 i+=4;
                 std::cout << " " << *((int32_t*)&code[i]) << "\n";
-                i+=3;
+                i+=3; num+=13;
             }
                 break;
             case ByteCode::COPY_PUSH:
-                std::cout << "COPY_PUSH " << *((int32_t*)&code[++i]) << " ";
+                std::cout << num << ". COPY_PUSH " << *((int32_t*)&code[++i]) << " ";
                 i+=4;
                 std::cout << *((uint32_t*)&code[i]) << "\n";
-                i+=3;
+                i+=3; num+=9;
                 break;
             case ByteCode::BUILTIN_CALL: {
-                std::cout << "BUILTIN_CALL " << std::get<0>(builtin_functions_id_names[*((int32_t*)&code[++i])]) << "\n";
-                i+=3;
+                std::cout << num << ". BUILTIN_CALL " << std::get<0>(builtin_functions_id_names[*((int32_t*)&code[++i])]) << "\n";
+                i+=3; num+=5;
             }
                 break;
             case ByteCode::GOTO:
-                std::cout << "GOTO " << *((int32_t*)&code[++i]) << "\n";
-                i+=3;
+                std::cout << num << ". GOTO " << *((int32_t*)&code[++i]) << "\n";
+                i+=3; num+=5;
                 break;
             case ByteCode::REL_GOTO:
-                std::cout << "REL_GOTO\n";
+                std::cout << num << ". REL_GOTO\n"; num++;
                 break;
             case ByteCode::PUSH_STACK_SCOPE:
-                std::cout << "PUSH_STACK_SCOPE\n";
+                std::cout << num << ". PUSH_STACK_SCOPE\n"; num++;
                 break;
             case ByteCode::POP_STACK_SCOPE:
-                std::cout << "POP_STACK_SCOPE\n";
+                std::cout << num << ". POP_STACK_SCOPE\n"; num++;
                 break;
             case ByteCode::PUSH_CURRENT_STACK_LEVEL:
-                std::cout << "PUSH_CURRENT_STACK_LEVEL\n";
+                std::cout << num << ". PUSH_CURRENT_STACK_LEVEL\n"; num++;
                 break;
             case ByteCode::GET_ABSOLUTE_POS:
-                std::cout << "GET_ABSOLUTE_POS\n";
+                std::cout << num << ". GET_ABSOLUTE_POS\n"; num++;
             case ByteCode::COND_GOTO:
                 break;
             case ByteCode::START_ARGUMENTS:
-                std::cout << "START_ARGUMENTS\n";
+                std::cout << num << ". START_ARGUMENTS\n"; num++;
                 break;
             case ByteCode::END_ARGUMENTS:
-                std::cout << "END_ARGUMENTS\n";
+                std::cout << num << ". END_ARGUMENTS\n"; num++;
                 break;
         }
     }
@@ -508,6 +502,8 @@ void Compiler::optimize(FunctionPart &part) {
 }
 
 void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {
+//    std::vector<FunctionPart> finished_parts;
+
     uint32_t total_size = 0;
     for (auto & part: parts) {
         part.len_before += total_size;

@@ -2,55 +2,37 @@
 #    return(add(add(a, b), c));
 #}
 
-#fn void print_3_num(int a, int b, int c) {
-#    print_num(a);
-#    print_num(b);
-#    print_num(c);
-#}
-
-fn int add_thousand(int a) {
-    var int temp;
-    asgn(temp, add(add(100, add(add(300, 400), 200)), a));
-    return(temp);
-}
-
-fn void main() {
-    var int a;
-    var int b;
-    var int c;
-
-    asgn(a, 10);
-
-    #scopes do work i guess.
-    #{
-    #var int a;
-    #asgn(a, 500);
-    #print_num(a);
-    #var int b;
-    #asgn(b, 1000);
-    #print_num(b);
-    #var int c;
-    #asgn(c, mul(a, b));
-    #print_num(c);
-    #}
-
-    asgn(b, 50);
-
-    asgn(a, add(100, add(a, b)))
-
+fn void print_3(int a, int b, int c) {
     print_num(a);
     print_num(b);
+    print_num(c);
+    return();
+}
 
+fn void print_2(int a, int b) {
+    print_num(a);
+    print_num(b);
+    return(); # all functions must have return() at the end for now.
+}
+# user functions!
+fn int add_thousand(int a) {
+    var int temp;
+    asgn(temp, add(add(100, add(add(300, 400), 200)), a)); # will work on "a = b + c" later.
+    return(temp);
+} #program starts in main.
+fn void main() {
+    var int a; var int b; var int c;
+    asgn(a, 10); asgn(b, 50);
+
+    print_2(a, b);
+    #scopes also work.
+    { var int b; asgn(b, 500); print_num(add(a, b));}
+    print_num(b);
+    asgn(a, add(100, add(a, b)))
+
+    print_2(a, b);
     asgn(c, add_thousand(a));
 
     print_num(c);
-
-
-    #asgn(c, add(a, b));
-
-    #print_num(a);
-    #print_num(b);
-    #print_num(c);
-
     return();
 }

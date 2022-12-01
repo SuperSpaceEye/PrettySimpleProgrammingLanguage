@@ -200,6 +200,8 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 temp_levels.pop_back();
                 cur++;
                 break;
+            default:
+                throw std::logic_error("Unknown word. This is probably a bug in the compiler. Terminating.");
         }
 
         if (debug) {
