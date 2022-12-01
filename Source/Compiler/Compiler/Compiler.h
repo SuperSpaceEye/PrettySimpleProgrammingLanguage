@@ -13,7 +13,7 @@
 #include "../Parser/Parser.h"
 
 struct StackScope {
-    //num, pos, id, type
+    //byte_len, pos, id, type
     std::vector<std::vector<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>>> scope{{}};
 
     //user function can have scopes inside it. To properly return from it, all allocated stack values
@@ -30,12 +30,15 @@ struct StackScope {
     void pop_scope_level() {scope_level.pop_back();}
     int get_current_scope_level() {return scope.size();}
     int get_entered_scope_level() {return scope_level.back();}
-    void collapse_to_scope_level(){
-        for (int scope_l = scope.size()-1; scope_l > scope_level.back(); scope_l++) {
+    int collapse_to_scope_level(){
+        int times = 0;
+        for (int scope_l = scope.size()-1; scope_l > scope_level.back(); scope_l--) {
             scope[scope_l-1].insert(scope[scope_l-1].end(), scope[scope_l].begin(), scope[scope_l].end());
             scope.pop_back();
+            times++;
         }
         scope_level.pop_back();
+        return times;
     }
     void push(uint32_t num, uint32_t pos, uint32_t id, VariableType type) {
         scope.back().emplace_back(num, pos, id, type);
@@ -43,10 +46,16 @@ struct StackScope {
     void push_one_scope_above(uint32_t num, uint32_t pos, uint32_t id, VariableType type) {
         scope[scope.size()-2].emplace_back(num, pos, id, type);
     }
-    std::tuple<uint32_t, uint32_t, uint32_t, VariableType> get_var(int id) {
-        for (int i = scope.size()-1; i > 0; i--) {
+    void push_one_scope_above(std::tuple<uint32_t, uint32_t, uint32_t, VariableType> var) {
+        scope[scope.size() - 2].push_back(var);
+
+    }
+    //returns var and scope level
+    std::pair<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>, int> get_var(int id) {
+        for (int i = scope.size()-1; i >= 0; i--) {
             for (auto & item: scope[i]) {
-                if (std::get<2>(item) == id) {return item;}
+                volatile int ahaha = std::get<2>(item);
+                if (std::get<2>(item) == id) {return {item, i};}
             }
         }
         throw std::logic_error("Shouldn't happen.");
@@ -70,25 +79,38 @@ struct StackScope {
         }
         return total;
     }
-};
+    int get_total_scope(int level) {
+        int total = 0;
+        for (auto item: scope[level]) {
+            total += std::get<0>(item);
+        }
+        return total;
+    }
 
-struct CustomFunctionData {
-    //start of the position of the value in code that user function will use
-    //to goto back to parent fn
-    uint32_t pos_from_function_val;
-    //start of the position of the value in code that parent function will use to
-    //goto to the user function
-    uint32_t pos_to_function_val;
+    int get_total_between(int start, int stop) {
+        int total = 0;
+        for (int i = start; i < stop; i++) {
+            for (auto item: scope[i]) {
+                total += std::get<0>(item);
+            }
+        }
+        return total;
+    }
 };
 
 struct FunctionPart {
     // first token is entrance point to function
-    std::vector<ByteCode> main_part;
-    // code that should be executed after returned to parent function.
-    std::vector<ByteCode> return_part;
-    // indexes with goto's to custom functions (must be resolved)
-    std::vector<CustomFunctionData> custom_function_calls;
+    std::vector<ByteCode> fn_code;
 
+    // indexes in code with goto's to custom functions (must be resolved)
+    // pos in code, id of fn
+    std::vector<std::pair<uint32_t, int>> calls_to_custom;
+    // indexes with goto's from custom functions (must be resolved)
+    // pos in code
+    std::vector<uint32_t> calls_from_custom;
+    std::vector<uint32_t> parent_end_of_fn_call;
+
+    int len_before;
     int id;
 };
 
@@ -104,11 +126,10 @@ class Compiler {
     generate_code_to_return_var_from_scope(StackScope &scope, int needed_byte_len, std::vector<ByteCode> &bcode,
                                            bool &popped);
 
-    static void configure_main_fn(FunctionPart & part) {}
-    static void link_custom_functions(std::vector<FunctionPart> & parts);
+    static std::vector<ByteCode> construct_program(std::vector<FunctionPart> & parts);
+    static void optimize(FunctionPart & part);
+    static void link_code_parts(std::vector<FunctionPart> &parts);
     static std::vector<ByteCode> concat_code(std::vector<FunctionPart> & parts);
-    //TODO
-    static std::vector<ByteCode> optimize(std::vector<ByteCode> & code) {return code;}
 public:
     static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
 };

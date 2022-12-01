@@ -12,7 +12,7 @@
 // BUILTIN_CALL num_fn - calls builtin function. Arguments are gotten from stack.
 // GOTO pos - moves execution pointer to position in bytecode. If pos == UINT32_MAX, then stop execution and exit
 // COND_GOTO cond_result_pos pos_true pos_false - gets 4 bytes from stack's cond_result_pos, if > 0, then goto to pos_true, if == 0 then goto to pos_false
-// REL_GOTO - gets pos number from the top of the stack and goes to it
+// REL_GOTO - gets pos number from the top of the stack, pops it from the stack, and goes to it
 // PUSH_STACK_SCOPE - for user functions
 // POP_STACK_SCOPE - for user functions
 // PUSH_CURRENT_STACK_LEVEL - pushes to the back of the stack 4 byte stack level num
@@ -25,6 +25,7 @@ enum class ByteCode:uint8_t {
     BUILTIN_CALL,
     GOTO,
     COND_GOTO,
+    REL_GOTO,
     PUSH_STACK_SCOPE,
     POP_STACK_SCOPE,
     PUSH_CURRENT_STACK_LEVEL,

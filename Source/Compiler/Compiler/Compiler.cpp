@@ -12,16 +12,12 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
     auto parts = compile_(tree);
     if (debug) {
         for (int i = 0; i < parts.size(); i++) {
-            display_code(parts[i].main_part);
+            display_code(parts[i].fn_code);
             std::cout << "\n";
         }
     }
-    configure_main_fn(parts[0]);
-    link_custom_functions(parts);
 
-    auto code = concat_code(parts);
-
-    return optimize(code);
+    return construct_program(parts);
 }
 
 int type_size(VariableType type) {
@@ -66,7 +62,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
     //TODO only main for now.
 
     for (int i = 0; i < tree_res.object_roots.size(); i++) {
-        StackScope scope;
+        auto scope = StackScope{};
         bool has_args = false;
 
         if (i != tree_res.main_idx) {
@@ -87,6 +83,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
                 scope.push(_type_size, scope.get_current_total(), std::get<2>(arg), std::get<0>(arg));
                 has_args = true;
             }
+            scope.push_scope_level();
         }
 
         int do_not_push = (has_args ? 1: 0);
@@ -106,7 +103,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
 void
 Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
                             int &do_not_push_scope) {
-    auto & main_part = part.main_part;
+    auto & main_part = part.fn_code;
     while (node != nullptr) {
         switch (node->act_type) {
             case ActionType::VariableDeclaration: {
@@ -131,29 +128,41 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 scope.push_scope();
                 auto & fn_call = *static_cast<FunctionCallAction*>(node.get());
 
+                main_part.emplace_back(ByteCode::START_ARGUMENTS);
                 if (fn_call.fn_type == FunctionType::UserFunction) {
 
                     main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
-                    part.custom_function_calls.emplace_back();
 
                     scope.push_scope_level();
 
                     main_part.emplace_back(ByteCode::PUSH);
                     put_4_num(main_part, 4);
-                    part.custom_function_calls.back().pos_from_function_val = main_part.size();
+                    part.calls_from_custom.emplace_back(main_part.size());
                     put_4_num(main_part, 0);
-                    scope.push(4, scope.get_current_total(), 0, VariableType::INT);
+                    scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
                 }
 
-                main_part.emplace_back(ByteCode::START_ARGUMENTS);
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
                     auto & arg = fn_call.arguments[i];
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {
                             auto & var_call = *static_cast<VariableCall*>(arg.get());
-                            auto data = scope.get_var(var_call.var_id);
+                            auto [data, scope_level] = scope.get_var(var_call.var_id);
+
                             uint32_t var_size = std::get<0>(data);
-                            uint32_t var_pos = std::get<1>(data);
+
+
+
+//                            int var_pos = std::get<1>(data)
+//                                    + scope.get_total_until_incl_scope(scope_level)
+//                                    - scope.get_total_until_incl_scope()_scope(scope.scope.size()-2);
+
+                            int var_pos = -scope.get_total_between(scope_level, scope.scope.size()-
+                                    (scope.scope.size()-2 != scope_level ? 1: 2))
+                                    + std::get<1>(data)
+                                    ;
+//                            var_pos = std::get<1>(data);
+
                             //if var is reference, then function will modify stack pos directly.
                             //if ref of b_any then must also place type information
                             //TODO Reference to num should contain relative position in a scope, and scope level it is contained in
@@ -193,8 +202,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                                     put_4_num(main_part, var_size);
                                     scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
 //                                } else if (var_size == 8) {
-//                                    put_4_num(main_part, var_pos);
-//                                    put_4_num(main_part, var_size);
+//                                    put_4_num(fn_code, var_pos);
+//                                    put_4_num(fn_code, var_size);
 //                                    scope.push(8, scope.get_current_total(), 0, VariableType::UINT);
 //                                }
 
@@ -263,9 +272,14 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
                     if (!popped) { free_scope(scope, main_part);}
                 } else {
+                    scope.push_one_scope_above(type_size(fn_call.return_type), 0, 0, VariableType::UINT);
+                    scope.pop_scope();
+
                     main_part.emplace_back(ByteCode::GOTO);
-                    part.custom_function_calls.back().pos_to_function_val = main_part.size();
+                    part.calls_to_custom.emplace_back(main_part.size(), fn_call.fn_id);
                     put_4_num(main_part, 0);
+
+                    part.parent_end_of_fn_call.emplace_back(main_part.size());
                     main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
                 }
             }
@@ -298,11 +312,13 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     break;
                 }
 
-                //TODO will not work correctly if returns from scope lower
-                // needs to pop scope until relative scope = 0
                 //TODO must use rel_goto instead of absolute
 
-                scope.collapse_to_scope_level();
+                auto times = scope.collapse_to_scope_level();
+
+                for (int i = 0; i < times; i++) {
+                    main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
+                }
 
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
                 bool popped = false;
@@ -312,7 +328,9 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         auto return_data = scope.get_var(var_call.var_id);
                         auto first_scope_var = scope.get_min_pos_var_of_scope();
 
-                        int needed_byte_len = std::get<0>(return_data);
+                        int needed_byte_len = std::get<0>(return_data.first);
+
+                        main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
 
                         if (needed_byte_len != 0) {
                             //pointer to return position can be easily aligned with return type
@@ -322,12 +340,34 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                                 //     3. pop scope without popping return var and ret_pos
                                 //     4. execute call rel_goto
                                 //     5. after returning, pop ret_pos
+                                main_part.emplace_back(ByteCode::SWAP);
+                                put_4_num(main_part, 0);
+                                put_4_num(main_part, std::get<1>(return_data.first));
+                                put_4_num(main_part, 4);
 
+                                //if return variable and positional argument are not already aligned
+                                if (std::get<1>(return_data) != 4) {
+                                    main_part.emplace_back(ByteCode::SWAP);
+                                    put_4_num(main_part, 4);
+                                    put_4_num(main_part, std::get<1>(return_data.first));
+                                    put_4_num(main_part, 4);
+                                }
 
+                                scope.push_one_scope_above(return_data.first);
+                                scope.scope.back().erase(scope.scope.back().begin());
                             } else {
                                 //TODO
                             }
                         }
+
+                        auto num = scope.get_current_total() - 4;
+                        if (num != 0) {
+                            main_part.emplace_back(ByteCode::POP);
+                            put_4_num(main_part, num);
+                        }
+
+                        main_part.emplace_back(ByteCode::REL_GOTO);
+                        scope.pop_scope();
                     }
                         break;
                     case ActionType::FunctionCall: {
@@ -381,10 +421,12 @@ Compiler::generate_code_to_return_var_from_scope(StackScope &scope, int needed_b
 }
 
 void Compiler::free_scope(StackScope &scope, std::vector<ByteCode> &bcode) {
-    auto scope_total = scope.get_current_total();
-    scope.pop_scope();
-    bcode.emplace_back(ByteCode::POP);
-    put_4_num(bcode, scope_total);
+    if (scope.scope.size() > 0) {
+        auto scope_total = scope.get_current_total();
+        scope.pop_scope();
+        bcode.emplace_back(ByteCode::POP);
+        put_4_num(bcode, scope_total);
+    }
 }
 
 
@@ -392,40 +434,43 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
     for (int i = 0; i < code.size(); i++) {
         switch (code[i]) {
             case ByteCode::PUSH: {
-                std::cout << "PUSH " << *((uint32_t*)&code[++i]);
+                std::cout << "PUSH " << *((int32_t*)&code[++i]);
                 i+=4;
-                std::cout << " " << *((uint32_t*)&code[i]) << "\n";
+                std::cout << " " << *((int32_t*)&code[i]) << "\n";
                 i+=3;
             }
                 break;
             case ByteCode::POP: {
-                std::cout << "POP  " << *((uint32_t*)&code[++i]) << "\n";
+                std::cout << "POP  " << *((int32_t*)&code[++i]) << "\n";
                 i+=3;
             }
                 break;
             case ByteCode::SWAP: {
-                std::cout << "SWAP " << *((uint32_t*)&code[++i]) << " ";
+                std::cout << "SWAP " << *((int32_t*)&code[++i]) << " ";
                 i+=4;
-                std::cout << " " << *((uint32_t*)&code[i]) << " ";
+                std::cout << " " << *((int32_t*)&code[i]) << " ";
                 i+=4;
-                std::cout << " " << *((uint32_t*)&code[i]) << "\n";
+                std::cout << " " << *((int32_t*)&code[i]) << "\n";
                 i+=3;
             }
                 break;
             case ByteCode::COPY_PUSH:
-                std::cout << "COPY_PUSH " << *((uint32_t*)&code[++i]) << " ";
+                std::cout << "COPY_PUSH " << *((int32_t*)&code[++i]) << " ";
                 i+=4;
                 std::cout << *((uint32_t*)&code[i]) << "\n";
                 i+=3;
                 break;
             case ByteCode::BUILTIN_CALL: {
-                std::cout << "BUILTIN_CALL " << std::get<0>(builtin_functions_id_names[*((uint32_t*)&code[++i])]) << "\n";
+                std::cout << "BUILTIN_CALL " << std::get<0>(builtin_functions_id_names[*((int32_t*)&code[++i])]) << "\n";
                 i+=3;
             }
                 break;
             case ByteCode::GOTO:
-                std::cout << "GOTO " << *((uint32_t*)&code[++i]) << "\n";
+                std::cout << "GOTO " << *((int32_t*)&code[++i]) << "\n";
                 i+=3;
+                break;
+            case ByteCode::REL_GOTO:
+                std::cout << "REL_GOTO\n";
                 break;
             case ByteCode::PUSH_STACK_SCOPE:
                 std::cout << "PUSH_STACK_SCOPE\n";
@@ -440,18 +485,57 @@ void Compiler::display_code(std::vector<ByteCode> & code) {
                 std::cout << "GET_ABSOLUTE_POS\n";
             case ByteCode::COND_GOTO:
                 break;
+            case ByteCode::START_ARGUMENTS:
+                std::cout << "START_ARGUMENTS\n";
+                break;
+            case ByteCode::END_ARGUMENTS:
+                std::cout << "END_ARGUMENTS\n";
+                break;
+        }
+    }
+}
+
+std::vector<ByteCode> Compiler::construct_program(std::vector<FunctionPart> &parts) {
+    for (auto & part: parts) {optimize(part);}
+
+    link_code_parts(parts);
+
+    return concat_code(parts);
+}
+
+void Compiler::optimize(FunctionPart &part) {
+    //TODO
+}
+
+void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {
+    uint32_t total_size = 0;
+    for (auto & part: parts) {
+        part.len_before += total_size;
+        total_size += part.fn_code.size();
+    }
+
+    //TODO map this
+    for (auto & part: parts) {
+        for (int i = 0; i < part.calls_to_custom.size(); i++) {
+            uint32_t fn_call_pos;
+            for (auto & _part: parts) {
+                if (_part.id == part.calls_to_custom[i].second) {
+                    fn_call_pos = _part.len_before; break;
+                }
+            }
+
+            *(uint32_t*)&part.fn_code[part.calls_to_custom[i].first] = fn_call_pos;
+            *(uint32_t*)&part.fn_code[part.calls_from_custom[i]] = part.len_before + part.parent_end_of_fn_call[i];
         }
     }
 }
 
 std::vector<ByteCode> Compiler::concat_code(std::vector<FunctionPart> & parts) {
     std::vector<ByteCode> to_return{};
+    to_return.reserve(parts.back().len_before + parts.back().fn_code.size());
+
     for (auto & part: parts) {
-        to_return.insert(to_return.end(), part.main_part.begin(), part.main_part.end());
+        to_return.insert(to_return.end(), part.fn_code.begin(), part.fn_code.end());
     }
     return to_return;
-}
-
-void Compiler::link_custom_functions(std::vector<FunctionPart> &parts) {
-
 }

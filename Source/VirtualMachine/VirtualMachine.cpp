@@ -125,13 +125,22 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 break;
             case ByteCode::COPY_PUSH: {
                 cur++;
-                auto pos = get_4_num(code, cur);
+                auto temp = get_4_num(code, cur);
+                auto pos = (int32_t)*(uint32_t*)&temp;
+//                auto pos = get_4_num(code, cur);
                 cur+=4;
                 auto amount = get_4_num(code, cur);
                 cur+=4;
                 stack.reserve(stack.size()+amount);
-                for (int i = 0; i < amount; i++) {
-                    stack.emplace_back(stack[pos+i+stack_scope.back()]);
+
+                if (pos >= 0) {
+                    for (int i = 0; i < amount; i++) {
+                        stack.emplace_back(stack[pos + i + stack_scope.back()]);
+                    }
+                } else {
+                    for (int i = 0; i < amount; i++) {
+                        stack.emplace_back(stack[pos + i + temp_levels.back()]);
+                    }
                 }
             }
                 break;
@@ -147,6 +156,13 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 break;
             case ByteCode::COND_GOTO:
                 break;
+            case ByteCode::REL_GOTO: {
+                cur++;
+                auto pos = get_4_num(stack, stack.size()-4);
+                stack.resize(stack.size()-4);
+                cur = pos;
+            }
+                break;
             case ByteCode::PUSH_STACK_SCOPE:
                 stack_scope.emplace_back(stack.size());
                 cur++;
@@ -161,7 +177,10 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 cur++;
                 break;
             case ByteCode::GET_ABSOLUTE_POS: {
-                auto rel_var_pos = get_4_num(stack, stack.size()-8);
+                //position can be negative if var is below current scope but
+                // is in function frame.
+                auto temp = get_4_num(stack, stack.size()-8);
+                auto rel_var_pos = (int32_t)*(uint32_t*)&temp;
                 auto var_level = get_4_num(stack, stack.size()-4);
 
                 auto abs_pos = var_level + rel_var_pos;

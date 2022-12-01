@@ -8,11 +8,11 @@
 #    print_num(c);
 #}
 
-#fn int add_hundred(int a) {
-#    var int temp;
-#    asgn(temp, add(a, 100));
-#    return(temp);
-#}
+fn int add_thousand(int a) {
+    var int temp;
+    asgn(temp, add(add(100, add(add(300, 400), 200)), a));
+    return(temp);
+}
 
 fn void main() {
     var int a;
@@ -20,16 +20,37 @@ fn void main() {
     var int c;
 
     asgn(a, 10);
+
+    #scopes do work i guess.
+    #{
+    #var int a;
+    #asgn(a, 500);
     #print_num(a);
-    #print_num(99999);
-    asgn(b, 50);
-    #print_num(a);
+    #var int b;
+    #asgn(b, 1000);
     #print_num(b);
-    #print_num(99999);
-    #asgn(c, add_hundred(a));
-    asgn(c, add(a, b));
+    #var int c;
+    #asgn(c, mul(a, b));
+    #print_num(c);
+    #}
+
+    asgn(b, 50);
+
+    asgn(a, add(100, add(a, b)))
 
     print_num(a);
     print_num(b);
+
+    asgn(c, add_thousand(a));
+
     print_num(c);
+
+
+    #asgn(c, add(a, b));
+
+    #print_num(a);
+    #print_num(b);
+    #print_num(c);
+
+    return();
 }

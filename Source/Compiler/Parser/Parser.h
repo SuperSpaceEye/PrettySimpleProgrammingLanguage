@@ -106,7 +106,7 @@ struct ValidateScope {
         }
     }
     VariableType get_var_type(int id) {
-        if (!check_id(id)) {throw std::logic_error("Variable was not declared in this scope.");}
+//        if (!check_id(id)) {throw std::logic_error("Variable was not declared in this scope.");}
         for (int i = var_scope.size()-1; i >= 0; i--) {
             for (auto & sid: var_scope[i]) {
                 if (std::get<0>(sid) == id) {return std::get<1>(sid);}
@@ -160,6 +160,7 @@ class Parser {
 public:
 
     static TreeResult create_tree(TranspilerResult &t_result, bool debug) {
+        //TODO reorder so that extract_nested is before validate
         auto ast = Parser::create_ast(t_result, debug);
         Parser::validate_ast(ast, debug);
         auto tree = extract_nested_functions(ast);
