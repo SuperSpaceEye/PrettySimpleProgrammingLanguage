@@ -1,7 +1,3 @@
-#fn int user_add(int a, int b, int c) {
-#    return(add(add(a, b), c));
-#}
-
 fn void print_3(int a, int b, int c) {
     print_num(a);
     print_num(b);
@@ -28,7 +24,7 @@ fn void main() {
     #scopes also work.
     { var int b; asgn(b, 500); print_num(add(a, b));}
     print_num(b);
-    asgn(a, add(100, add(a, b)))
+    asgn(a, add(100, add(a, b)));
 
     print_2(a, b);
     asgn(c, add_thousand(a));

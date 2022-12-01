@@ -135,11 +135,17 @@ struct ValidateScope {
     }
 };
 
+enum class Bracket {
+    Circle,
+    Box,
+    Fancy,
+};
+
 class Parser {
     static void
-    recursive_create_ast(const std::vector<Token> &tokens, int logic_indentation, bool &function_declaration,
+    recursive_create_ast(const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
                          ASTCreationResult &to_return, IdRegister &reg, std::shared_ptr<BaseAction> &root,
-                         int begin_num, int end_num, int &i);
+                         int begin_num, int end_num, int &i, std::vector<Bracket> &brackets_stack);
 
     static void check_token_is_valid_argument(Token token, int &i);
 

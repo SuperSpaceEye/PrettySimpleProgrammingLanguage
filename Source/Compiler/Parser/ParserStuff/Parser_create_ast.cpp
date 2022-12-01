@@ -16,7 +16,13 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
         auto root = std::make_shared<BaseAction>();
         auto beginning = std::shared_ptr{root};
 
-        recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, to_return.reg, root, 0, tokens.size(), i);
+        int circle_bracket_logic = 0;
+        int box_bracket_logic = 0;
+
+        std::vector<Bracket> brackets_stack;
+
+        recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, to_return.reg, root, 0,
+                             tokens.size(), i, brackets_stack);
 
         i++;
         to_return.object_roots.emplace_back(beginning->next_action);
@@ -26,9 +32,9 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
     return to_return;
 }
 
-void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_indentation, bool &function_declaration,
+void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
                                   ASTCreationResult &to_return, IdRegister &reg, std::shared_ptr<BaseAction> &root,
-                                  int begin_num, int end_num, int &i) {
+                                  int begin_num, int end_num, int &i, std::vector<Bracket> &brackets_stack) {
     std::shared_ptr<BaseAction> temp_root;
     for (; i < end_num; i++) {
         auto token = tokens[i];
@@ -67,6 +73,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                     arguments.emplace_back(var_type, is_ref, var_id);
                 }
 
+
                 auto temp_root = std::make_shared<FunctionDeclaration>(FunctionDeclaration{BaseAction{ActionType::FunctionDeclaration, root},
                                                                                  id, is_inline, return_type, arguments});
                 reg.register_function(id, temp_root.get());
@@ -101,34 +108,54 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
             case Token::FOR:
                 break;
             case Token::LEFT_CIRCLE_BRACKET:
+                brackets_stack.emplace_back(Bracket::Circle);
                 break;
             case Token::RIGHT_CIRCLE_BRACKET:
+                if (brackets_stack.empty()) {throw std::logic_error("Unclosed circle bracket.");}
+                if (brackets_stack.back() != Bracket::Circle) {throw std::logic_error("Unmatched circle bracket.");}
+
+                brackets_stack.pop_back();
+
                 i--;
                 return;
                 break;
             case Token::LEFT_BOX_BRACKET:
+                brackets_stack.emplace_back(Bracket::Box);
                 break;
             case Token::RIGHT_BOX_BRACKET:
+                if (brackets_stack.empty()) {throw std::logic_error("Unclosed box bracket.");}
+                if (brackets_stack.back() != Bracket::Circle) {throw std::logic_error("Unmatched box bracket.");}
+
+                brackets_stack.pop_back();
                 return;
                 break;
             case Token::BEGIN_LOGIC_BLOCK:
+                brackets_stack.emplace_back(Bracket::Fancy);
+
                 logic_indentation++;
                 temp_root = std::make_shared<BaseAction>(BaseAction{ActionType::StartLogicBlock});
                 root->next_action = temp_root;
                 root = temp_root;
-                recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, reg, root, begin_num, end_num, ++i);
+                recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, reg, root, begin_num,
+                                     end_num, ++i, brackets_stack);
                 break;
             case Token::END_LOGIC_BLOCK:
+                if (brackets_stack.size() == 0) {throw std::logic_error("Unclosed scope bracket.");}
+                if (brackets_stack.back() != Bracket::Fancy) {throw std::logic_error("Unmatched scope bracket.");}
+
+                brackets_stack.pop_back();
+
                 logic_indentation--;
+
                 temp_root = std::make_shared<BaseAction>(BaseAction{ActionType::EndLogicBlock});
                 root->next_action = temp_root;
                 root = temp_root;
                 return;
                 break;
             case Token::END_COMMAND:
-//                temp_root = std::make_shared<BaseAction>(BaseAction{ActionType::EndAction});
-//                root->next_action = temp_root;
-//                root = temp_root;
+                if (brackets_stack.back() == Bracket::Circle) {throw std::logic_error("Unclosed circle brackets before end command.");}
+                else if (brackets_stack.back() == Bracket::Circle) {throw std::logic_error("Unclosed box brackets before end command.");}
+
                 break;
             case Token::COMMA:
                 return;
@@ -147,17 +174,16 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
 
                         if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
 
+                        brackets_stack.emplace_back(Bracket::Circle);
+
+                        if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
                         while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
                             auto arg_root = std::make_shared<BaseAction>();
                             auto in_root = arg_root;
                             recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                                 to_return, reg, in_root, 0, end_num, i);
+                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack);
                             arguments.emplace_back(arg_root->next_action);
                         }
-
-//                        if (arguments.size() != std::get<2>(bfn.second).size()) {
-//                            throw std::logic_error("Too many arguments");
-//                        }
 
                         if (std::get<0>(bfn.second) != "return") {
                             auto new_root = std::make_shared<FunctionCallAction>(FunctionCallAction{
@@ -185,11 +211,12 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
 
                         if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
 
+                        brackets_stack.emplace_back(Bracket::Circle);
                         while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
                             auto arg_root = std::make_shared<BaseAction>();
                             auto in_root = arg_root;
                             recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                                 to_return, reg, in_root, 0, end_num, i);
+                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack);
                             arguments.emplace_back(arg_root->next_action);
                         }
 
@@ -250,6 +277,13 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int logic_in
                 throw std::logic_error{"Invalid token"};
             default:
                 throw std::logic_error{"Shouldn't happen."};
+        }
+    }
+
+    if (!brackets_stack.empty()) {
+               if (brackets_stack.back() == Bracket::Circle) {throw std::logic_error("Unclosed circle brackets.");
+        } else if (brackets_stack.back() == Bracket::Box)    {throw std::logic_error("Unclosed box brackets.");
+        } else if (brackets_stack.back() == Bracket::Fancy)  {throw std::logic_error("Unclosed scope.");
         }
     }
 }
