@@ -121,7 +121,7 @@ struct FunctionPart {
 
 class Compiler {
     static std::vector<FunctionPart> compile_(TreeResult &tree_res);
-    static void display_code(std::vector<ByteCode> &code, int &num);
+    static void display_code(std::vector<ByteCode> &code, int &num, std::vector<int64_t> &delimiters);
     static void
     recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
                       int &do_not_push_scope);
@@ -134,7 +134,7 @@ class Compiler {
     static std::vector<ByteCode> construct_program(std::vector<FunctionPart> & parts);
     static void optimize(FunctionPart & part);
     static void link_code_parts(std::vector<FunctionPart> &parts);
-    static std::vector<ByteCode> concat_code(std::vector<FunctionPart> & parts);
+    static std::vector<ByteCode> concat_code(std::vector<FunctionPart> &parts);
 public:
     static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
 };

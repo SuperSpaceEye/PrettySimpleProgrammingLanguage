@@ -6,26 +6,51 @@ fn int fib(int n) {
     #asgn(n, add(fib(sub(n, 1)), fib(sub(n, 2))));
     #return(n);
 
-    print_num(n);
+    #print_num(n);
 
-    if (more(n, 1)) {
-        var int fib1;
-        var int fib2;
+    #if (more(n, 1)) {
+    #   #print_num(n);
+    #    var int fib1;
+    #    var int fib2;
 
-        asgn(fib1, fib(sub(n, 1)));
-        asgn(fib2, fib(sub(n, 2)));
+    #    #print_num(-10);
+    #    asgn(fib1, fib(sub(n, 1)));
+    #    #print_num(-20);
+    #    asgn(fib2, fib(sub(n, 2)));
+    #    #print_num(-30);
 
-        asgn(n, add(fib1, fib2));
-        #asgn(n, add(fib(sub(n, 1)), fib(sub(n, 2))));
-    } endif
+    #    asgn(n, add(fib1, fib2));
+    #    print_num(n);
+    #    #asgn(n, add(fib(sub(n, 1)), fib(sub(n, 2))));
+    #} endif
+    var int a;
+    asgn(a, 10);
+
+    asgn(n, add(n, a));
+
     return(n);
+}
+
+fn int fib2(int n) {
+    var int a;
+    asgn(a, mul(n, 100));
+    return(a);
+}
+
+fn void print_2(int a) {
+    print_num(a);
+    return();
 }
 
 fn void main() {
     var int a;
 
-    asgn(a, fib(6));
+    #asgn(a, 10);
+
+    asgn(a, fib(fib2(fib2(fib(fib(8))))));
     print_num(a);
-    print_num(-10);
+
+    print_2(a);
+    #print_num(-10);
     return();
 }

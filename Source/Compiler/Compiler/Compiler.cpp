@@ -10,16 +10,21 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
     auto tree = Parser::create_tree(res, debug);
 
     auto parts = compile_(tree);
+
+    auto code = construct_program(parts);
+
     if (debug) {
         int num = 0;
 
-        for (int i = 0; i < parts.size(); i++) {
-            display_code(parts[i].fn_code, num);
-            std::cout << "\n";
-        }
+        std::vector<int64_t> delimiters;
+        delimiters.reserve(parts.size());
+        for (auto & part: parts) {delimiters.emplace_back(part.len_before);}
+        delimiters.emplace_back(INT64_MAX);
+        display_code(code, num, delimiters);
+        std::cout << "\n";
     }
 
-    return construct_program(parts);
+    return code;
 }
 
 int type_size(VariableType type) {
@@ -132,7 +137,10 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 main_part.emplace_back(ByteCode::START_ARGUMENTS);
                 if (fn_call.fn_type == FunctionType::UserFunction) {
-                    main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
+                    //Okay, i think this was the problem. Why? i don't know.
+                    if (fn_call.return_type != VariableType::VOID) {
+                        main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
+                    }
 
                     scope.push_scope_level();
 
@@ -140,9 +148,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     put_4_num(main_part, 4);
                     part.calls_from_custom.emplace_back(main_part.size());
                     put_4_num(main_part, 0);
-                    // TODO idfk why there should be a scope for user functions to work properly.
-                    //  I probably fucked up scoping but it works so idfc right now.
-                    scope.push_scope();
                     scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
                 }
 
@@ -267,8 +272,9 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
                     if (!popped) { free_scope(scope, main_part);}
                 } else {
-                    scope.push_one_scope_above(type_size(fn_call.return_type), 0, 0, VariableType::UINT);
-                    scope.pop_scope();
+                    if (fn_call.return_type != VariableType::VOID) {
+                        scope.push_one_scope_above(type_size(fn_call.return_type), 0, 0, VariableType::UINT);
+                    }
                     scope.pop_scope();
 
                     main_part.emplace_back(ByteCode::GOTO);
@@ -316,7 +322,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 }
                 scope.scope.back().pop_back();
 
-
                 main_part.emplace_back(ByteCode::COND_GOTO);
                 part.relative_gotos_inside_fn.emplace_back(main_part.size());
                 uint32_t p_to_false_expr = main_part.size();
@@ -344,7 +349,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
             }
                 break;
             case ActionType::StartLogicBlock:
-                //TODO think about it
                 if (!do_not_push_scope) {
                     scope.push_scope();
                     main_part.emplace_back(ByteCode::PUSH_STACK_SCOPE);
@@ -424,6 +428,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     }
                 }
 
+                //return pos will be cleaned up by rel_goto
                 auto num = scope.get_current_total() - 4;
                 if (num > 0) {
                     main_part.emplace_back(ByteCode::POP);
@@ -483,8 +488,12 @@ void Compiler::free_scope(StackScope &scope, std::vector<ByteCode> &bcode) {
 }
 
 
-void Compiler::display_code(std::vector<ByteCode> &code, int &num) {
+void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<int64_t> &delimiters) {
+    int del_pos = 0;
     for (int i = 0; i < code.size(); i++) {
+        if (i >= delimiters[del_pos]) {
+            std::cout << "\n";del_pos++;
+        }
         switch (code[i]) {
             case ByteCode::PUSH: {
                 std::cout << num << ". PUSH " << *((int32_t*)&code[++i]);
@@ -565,8 +574,6 @@ void Compiler::optimize(FunctionPart &part) {
 }
 
 void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {
-//    std::vector<FunctionPart> finished_parts;
-
     uint32_t total_size = 0;
     for (auto & part: parts) {
         part.len_before += total_size;
@@ -575,9 +582,35 @@ void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {
 
     //TODO map this
     for (auto & part: parts) {
+        //TODO okay, I know how to fix it.
+        //so, if there is a nested custom function like fun1(fun2(fun2(fun1(fun1(a)))))
+        // i need to reverse returning values in this statement.
+
+//        std::vector<std::vector<uint32_t>> reordering;
+//        int last_id = -1;
+//        for (int i = 0; i < part.calls_to_custom.size(); i++) {
+//            if (part.calls_to_custom[i].second != last_id) {
+//                last_id = part.calls_to_custom[i].second;
+//                reordering.emplace_back();
+//            }
+//
+//            reordering.back().push_back(part.parent_end_of_fn_call[i]);
+//        }
+//        std::vector<uint32_t> temp;
+//        for (auto & calls_segment: reordering) {
+//            temp.reserve(calls_segment.size());
+//            for (int i = calls_segment.size()-1; i >= 0; i--) {
+//                temp.emplace_back(calls_segment[i]);
+//            }
+//            part.parent_end_of_fn_call.clear();
+//            part.parent_end_of_fn_call.insert(part.parent_end_of_fn_call.end(), temp.begin(), temp.end());
+//        }
+
+
         for (int i = 0; i < part.calls_to_custom.size(); i++) {
             uint32_t fn_call_pos;
-            for (auto & _part: parts) {
+            for (int _i = parts.size()-1; _i >= 0; _i--) {
+                auto & _part = parts[_i];
                 if (_part.id == part.calls_to_custom[i].second) {
                     fn_call_pos = _part.len_before; break;
                 }
@@ -595,7 +628,7 @@ void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {
     }
 }
 
-std::vector<ByteCode> Compiler::concat_code(std::vector<FunctionPart> & parts) {
+std::vector<ByteCode> Compiler::concat_code(std::vector<FunctionPart> &parts) {
     std::vector<ByteCode> to_return{};
     to_return.reserve(parts.back().len_before + parts.back().fn_code.size());
 
