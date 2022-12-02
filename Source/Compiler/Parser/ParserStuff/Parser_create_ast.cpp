@@ -212,6 +212,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                         if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
 
                         brackets_stack.emplace_back(Bracket::Circle);
+                        if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
                         while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
                             auto arg_root = std::make_shared<BaseAction>();
                             auto in_root = arg_root;

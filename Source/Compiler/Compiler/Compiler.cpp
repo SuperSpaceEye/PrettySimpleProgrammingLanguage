@@ -368,7 +368,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 }
 
                 auto num = scope.get_current_total() - 4;
-                if (num != 0) {
+                if (num > 0) {
                     main_part.emplace_back(ByteCode::POP);
                     put_4_num(main_part, num);
                 }
@@ -416,7 +416,7 @@ Compiler::generate_code_to_return_var_from_scope(StackScope &scope, int needed_b
 
 void Compiler::free_scope(StackScope &scope, std::vector<ByteCode> &bcode) {
     if (scope.scope.size() > 0) {
-        auto scope_total = scope.get_current_total();
+        uint32_t scope_total = scope.get_current_total();
         scope.pop_scope();
         bcode.emplace_back(ByteCode::POP);
         put_4_num(bcode, scope_total);
