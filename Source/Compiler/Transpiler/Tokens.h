@@ -25,6 +25,8 @@ enum class Token {
     FLOAT,
     STRING,
     IF,
+    ELSE,
+    ENDIF,
     WHILE,
     FOR,
 
@@ -83,6 +85,8 @@ const std::vector<std::string> reserved_tokens {
     "float",
     "string",
     "if",
+    "else",
+    "endif",
     "while",
     "for",
 

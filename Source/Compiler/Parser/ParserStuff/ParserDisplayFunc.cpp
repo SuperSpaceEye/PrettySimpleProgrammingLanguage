@@ -56,9 +56,6 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
             std::cout << pi(indentation) << "!!!no type\n";
         }
             break;
-        case ActionType::EndAction: {
-
-        }
         case ActionType::FunctionDeclaration: {
             std::cout << "\n";
             auto & fn_dec = *static_cast<FunctionDeclaration*>(root);
@@ -103,7 +100,16 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
         }
             break;
         case ActionType::IfStatement: {
+            auto & if_statement = *static_cast<IfStatement*>(root);
 
+            std::cout << pi(indentation) << "If statement\n";
+            std::cout << pi(indentation+2) << "Expression:\n";
+            display_root(if_statement.argument.get(), indentation+4, reg);
+            std::cout << pi(indentation+2) << "If true:\n";
+            display_root(if_statement.true_branch.get(), indentation+4, reg);
+            std::cout << pi(indentation+2) << "If false: \n";
+            display_root(if_statement.false_branch.get(), indentation+4, reg);
+            std::cout << pi(indentation) << "End of if statement\n";
         }
             break;
         case ActionType::StartLogicBlock: {

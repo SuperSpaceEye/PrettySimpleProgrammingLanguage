@@ -22,7 +22,7 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
         std::vector<Bracket> brackets_stack;
 
         recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, to_return.reg, root, 0,
-                             tokens.size(), i, brackets_stack);
+                             tokens.size(), i, brackets_stack, 0);
 
         i++;
         to_return.object_roots.emplace_back(beginning->next_action);
@@ -34,7 +34,8 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
 
 void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
                                   ASTCreationResult &to_return, IdRegister &reg, std::shared_ptr<BaseAction> &root,
-                                  int begin_num, int end_num, int &i, std::vector<Bracket> &brackets_stack) {
+                                  int begin_num, int end_num, int &i, std::vector<Bracket> &brackets_stack,
+                                  int if_statement_nesting) {
     std::shared_ptr<BaseAction> temp_root;
     for (; i < end_num; i++) {
         auto token = tokens[i];
@@ -101,7 +102,51 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                     root = temp_root;
                 }
                 break;
-            case Token::IF:
+            case Token::IF: {
+                //var type, is_reference, var id
+                std::vector<std::shared_ptr<BaseAction>> arguments;
+
+                if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
+
+                brackets_stack.emplace_back(Bracket::Circle);
+
+                if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {throw std::logic_error("Emtpy if statement");}
+                while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
+                    auto arg_root = std::make_shared<BaseAction>();
+                    auto in_root = arg_root;
+                    recursive_create_ast(tokens, logic_indentation, function_declaration,
+                                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+                    arguments.emplace_back(arg_root->next_action);
+                }
+
+                if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement.");}
+
+                auto true_branch = std::make_shared<BaseAction>(BaseAction{});
+                {
+                    if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Incorrect if statement declaration.");}
+                    auto in_root = true_branch;
+                    recursive_create_ast(tokens, logic_indentation, function_declaration,
+                                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+                }
+                std::shared_ptr<BaseAction> false_branch = std::make_shared<BaseAction>(BaseAction{});
+                if (tokens[i] == Token::ELSE) {
+                    if (tokens[++i] == Token::IF || tokens[i] == Token::BEGIN_LOGIC_BLOCK) {
+                        auto in_root = false_branch;
+                        recursive_create_ast(tokens, logic_indentation, function_declaration,
+                                             to_return, reg, in_root, 0, end_num, i, brackets_stack, if_statement_nesting+1);
+                    } else {throw std::logic_error("Incorrect if statement declaration.");}
+                }
+
+                auto if_action = std::make_shared<IfStatement>(IfStatement{BaseAction{ActionType::IfStatement},
+                                                               arguments[0],
+                                                               true_branch->next_action,
+                                                               false_branch->next_action});
+
+                root->next_action = if_action;
+                root = if_action;
+
+                if (if_statement_nesting) { return;}
+            }
                 break;
             case Token::WHILE:
                 break;
@@ -137,7 +182,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 root->next_action = temp_root;
                 root = temp_root;
                 recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, reg, root, begin_num,
-                                     end_num, ++i, brackets_stack);
+                                     end_num, ++i, brackets_stack, 0);
                 break;
             case Token::END_LOGIC_BLOCK:
                 if (brackets_stack.size() == 0) {throw std::logic_error("Unclosed scope bracket.");}
@@ -181,7 +226,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                             auto arg_root = std::make_shared<BaseAction>();
                             auto in_root = arg_root;
                             recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack);
+                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
                             arguments.emplace_back(arg_root->next_action);
                         }
 
@@ -217,7 +262,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                             auto arg_root = std::make_shared<BaseAction>();
                             auto in_root = arg_root;
                             recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack);
+                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
                             arguments.emplace_back(arg_root->next_action);
                         }
 
@@ -267,6 +312,10 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 root = temp_root;
             }
                 break;
+
+            case Token::ENDIF:
+            case Token::ELSE:
+                return;
 
             case Token::ARRAY:
             case Token::INT:

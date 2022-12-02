@@ -144,7 +144,38 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 break;
             case ActionType::WhileLoop:
                 break;
-            case ActionType::IfStatement:
+            case ActionType::IfStatement: {
+                auto & if_call = *static_cast<IfStatement*>(root.get());
+
+                switch (if_call.argument->act_type) {
+                    case ActionType::VariableCall: {
+
+                        auto to_val = if_call.argument;
+                        recursive_validate(scope, to_val, ids, last_id);
+
+                        auto & var_call = *static_cast<VariableCall*>(if_call.argument.get());
+
+                        if (var_call.type != VariableType::UINT) {throw std::logic_error("Type of expression in if statement must be uint.");}
+                    }
+                        break;
+                    case ActionType::FunctionCall: {
+                        auto & fn_call = *static_cast<FunctionCallAction*>(if_call.argument.get());
+
+                        auto expr = if_call.argument;
+                        recursive_validate(scope, expr, ids, last_id);
+                        if (fn_call.return_type != VariableType::UINT) { throw std::logic_error("Return type of a function in an if statement expression must be uint.");}
+                    }
+                        break;
+                    default: {throw std::logic_error("Incorrect if statement expression");}
+                }
+                auto & if_true = if_call.true_branch;
+                auto & if_false = if_call.false_branch;
+
+                auto in = if_true;
+                recursive_validate(scope, in, ids, last_id);
+                in = if_false;
+                recursive_validate(scope, in, ids, last_id);
+            }
                 break;
             case ActionType::StartLogicBlock:
                 if (!do_not_push_scope) {

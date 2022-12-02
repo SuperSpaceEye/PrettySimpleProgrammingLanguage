@@ -32,7 +32,7 @@ struct StackScope {
     int get_entered_scope_level() {return scope_level.back();}
     int collapse_to_scope_level(){
         int times = 0;
-        for (int scope_l = scope.size()-1; scope_l > scope_level.back(); scope_l--) {
+        for (int scope_l = scope.size()-1; scope_l > scope_level.back()-1; scope_l--) {
             scope[scope_l-1].insert(scope[scope_l-1].end(), scope[scope_l].begin(), scope[scope_l].end());
             scope.pop_back();
             times++;
@@ -96,6 +96,9 @@ struct StackScope {
         }
         return total;
     }
+
+    StackScope()=default;
+    StackScope(const StackScope & st)= default;
 };
 
 struct FunctionPart {
@@ -109,6 +112,8 @@ struct FunctionPart {
     // pos in code
     std::vector<uint32_t> calls_from_custom;
     std::vector<uint32_t> parent_end_of_fn_call;
+
+    std::vector<uint32_t> relative_gotos_inside_fn;
 
     int len_before = 0;
     int id = -1;

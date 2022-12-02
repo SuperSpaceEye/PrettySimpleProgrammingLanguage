@@ -69,6 +69,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
 
         if (i != tree_res.main_idx) {
             scope.push_scope();
+            scope.push_scope_level();
             //positional argument + size of all arguments
             scope.push(4, 0, 0, VariableType::UINT);
 
@@ -85,7 +86,6 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
                 scope.push(_type_size, scope.get_current_total(), std::get<2>(arg), std::get<0>(arg));
                 has_args = true;
             }
-            scope.push_scope_level();
         }
 
         int do_not_push = (has_args ? 1: 0);
@@ -286,7 +286,62 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 break;
             case ActionType::WhileLoop:
                 break;
-            case ActionType::IfStatement:
+            case ActionType::IfStatement: {
+                //GENERATE CODE FOR ARGUMENT
+                auto & if_st = *static_cast<IfStatement*>(node.get());
+
+                switch (if_st.argument->act_type) {
+                    case ActionType::VariableCall: {
+                        auto & var_call = *static_cast<VariableCall*>(if_st.argument.get());
+                        auto [data, scope_level] = scope.get_var(var_call.var_id);
+
+                        uint32_t var_size = std::get<0>(data);
+
+                        int var_pos = -scope.get_total_between(scope_level, scope.scope.size()-
+                                                                            (scope.scope.size()-2 != scope_level ? 1: 2))
+                                      + std::get<1>(data)
+                        ;
+
+                        main_part.emplace_back(ByteCode::COPY_PUSH);
+                        put_4_num(main_part, var_pos);
+                        put_4_num(main_part, var_size);
+                        scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
+                    }
+                        break;
+                    case ActionType::FunctionCall: {
+                        auto arg = if_st.argument;
+                        recursive_compile(part, scope, arg, false, do_not_push_scope);
+                    }
+                        break;
+                }
+                scope.scope.back().pop_back();
+
+
+                main_part.emplace_back(ByteCode::COND_GOTO);
+                part.relative_gotos_inside_fn.emplace_back(main_part.size());
+                uint32_t p_to_false_expr = main_part.size();
+                put_4_num(main_part, 4);
+
+                // generate code for true branch
+                auto true_br = if_st.true_branch;
+                recursive_compile(part, scope, true_br, false, do_not_push_scope);
+                // goto to jump over the code of the false branch
+                main_part.emplace_back(ByteCode::GOTO);
+                part.relative_gotos_inside_fn.emplace_back(main_part.size());
+                uint32_t p_to_true_expr_end = main_part.size();
+                put_4_num(main_part, 4);
+
+                auto true_br_end = main_part.size();
+                // generate code for false branch
+                auto false_br = if_st.false_branch;
+                recursive_compile(part, scope, false_br, false, do_not_push_scope);
+                uint32_t end_br_pos = main_part.size();
+
+                // changes pos of the failed expr goto to the end of true branch pos.
+                *((uint32_t*)&main_part[p_to_false_expr]) = true_br_end;
+                // changes pos of the goto after true branch to end of false branch.
+                *((uint32_t*)&main_part[p_to_true_expr_end])  = end_br_pos;
+            }
                 break;
             case ActionType::StartLogicBlock:
                 //TODO think about it
@@ -307,6 +362,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     put_4_num(main_part, UINT32_MAX);
                     break;
                 }
+
+                auto local_scope = StackScope(scope);
 
                 auto times = scope.collapse_to_scope_level();
 
@@ -418,8 +475,10 @@ void Compiler::free_scope(StackScope &scope, std::vector<ByteCode> &bcode) {
     if (scope.scope.size() > 0) {
         uint32_t scope_total = scope.get_current_total();
         scope.pop_scope();
-        bcode.emplace_back(ByteCode::POP);
-        put_4_num(bcode, scope_total);
+        if (scope_total > 0) {
+            bcode.emplace_back(ByteCode::POP);
+            put_4_num(bcode, scope_total);
+        }
     }
 }
 
@@ -466,6 +525,11 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num) {
             case ByteCode::REL_GOTO:
                 std::cout << num << ". REL_GOTO\n"; num++;
                 break;
+            case ByteCode:: COND_GOTO: {
+                std::cout << num << ". COND_GOTO " << *((int32_t*)&code[++i]) << "\n";
+                i+=3; num+=5;
+            }
+                break;
             case ByteCode::PUSH_STACK_SCOPE:
                 std::cout << num << ". PUSH_STACK_SCOPE\n"; num++;
                 break;
@@ -477,7 +541,6 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num) {
                 break;
             case ByteCode::GET_ABSOLUTE_POS:
                 std::cout << num << ". GET_ABSOLUTE_POS\n"; num++;
-            case ByteCode::COND_GOTO:
                 break;
             case ByteCode::START_ARGUMENTS:
                 std::cout << num << ". START_ARGUMENTS\n"; num++;
@@ -522,6 +585,12 @@ void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {
 
             *(uint32_t*)&part.fn_code[part.calls_to_custom[i].first] = fn_call_pos;
             *(uint32_t*)&part.fn_code[part.calls_from_custom[i]] = part.len_before + part.parent_end_of_fn_call[i];
+        }
+
+        for (auto & pos: part.relative_gotos_inside_fn) {
+            uint32_t rel_pos = *((uint32_t*)&part.fn_code[pos]);
+            rel_pos += part.len_before;
+            *((uint32_t*)&part.fn_code[pos]) = rel_pos;
         }
     }
 }

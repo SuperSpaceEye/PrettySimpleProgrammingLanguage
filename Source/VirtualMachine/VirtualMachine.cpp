@@ -154,7 +154,18 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 cur = pos;
             }
                 break;
-            case ByteCode::COND_GOTO:
+            case ByteCode::COND_GOTO: {
+                cur++;
+                auto val = get_4_num(stack, stack.size()-4);
+                stack.resize(stack.size()-4);
+
+                if (!val) {
+                    auto pos = get_4_num(code, cur);
+                    cur = pos;
+                    continue;
+                }
+                cur+=4;
+            }
                 break;
             case ByteCode::REL_GOTO: {
                 cur++;

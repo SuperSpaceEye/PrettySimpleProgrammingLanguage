@@ -1,28 +1,31 @@
-fn void nested3() {
-    print_num(3);
-    return();
-}
+fn int fib(int n) {
+    #doesn't work
+    #if (less_eq(n, 1)) {
+    #    return(n);
+    #} endif
+    #asgn(n, add(fib(sub(n, 1)), fib(sub(n, 2))));
+    #return(n);
 
-fn void nested2() {
-    nested3();
-    print_num(2);
-    return();
-}
+    print_num(n);
 
-fn void nested1() {
-    nested2();
-    print_num(1);
-    return();
-}
+    if (more(n, 1)) {
+        var int fib1;
+        var int fib2;
 
-fn void test_nested() {
-    nested1();
-    print_num(0);
-    return();
+        asgn(fib1, fib(sub(n, 1)));
+        asgn(fib2, fib(sub(n, 2)));
+
+        asgn(n, add(fib1, fib2));
+        #asgn(n, add(fib(sub(n, 1)), fib(sub(n, 2))));
+    } endif
+    return(n);
 }
 
 fn void main() {
-    test_nested();
-    print_num(-1);
+    var int a;
+
+    asgn(a, fib(6));
+    print_num(a);
+    print_num(-10);
     return();
 }

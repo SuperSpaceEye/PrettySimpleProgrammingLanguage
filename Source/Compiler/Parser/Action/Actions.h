@@ -24,6 +24,12 @@ struct FunctionCallAction: public BaseAction {
     std::vector<VariableType> required_arguments;
 };
 
+struct IfStatement: public BaseAction {
+    std::shared_ptr<BaseAction> argument;
+    std::shared_ptr<BaseAction> true_branch;
+    std::shared_ptr<BaseAction> false_branch;
+};
+
 struct ReturnCall: public BaseAction {
     std::shared_ptr<BaseAction> argument = nullptr;
 };
