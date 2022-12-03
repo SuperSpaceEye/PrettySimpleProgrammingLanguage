@@ -215,6 +215,7 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 throw std::logic_error("Unknown word. This is probably a bug in the compiler. Terminating.");
         }
 
+        //DO NOT DELETE. MAKES VM SLOWER FOR SOME REASON. LAST CHECKED 03.12.2022
         if (debug) {
             std::cout << "TRANSACTION. STACK\n";
             for (auto val: stack) {
@@ -316,8 +317,6 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
             stack.resize(stack.size()+4);
             *((uint32_t*)&stack[stack.size()-4]) = arg_val;
         }
-            break;
-        case BuiltinIDS::RETURN:
             break;
         case BuiltinIDS::INPUT:
             break;

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <chrono>
 
 #include "Source/Compiler/Compiler/Compiler.h"
 #include "Source/VirtualMachine/VirtualMachine.h"
@@ -28,7 +29,11 @@ int main(int argc, char *argv[]) {
 
     VirtualMachine vm{};
 
+    auto time1 = std::chrono::high_resolution_clock::now();
     vm.execute(code, false);
+    auto time2 = std::chrono::high_resolution_clock::now();
+
+    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::nanoseconds>(time2 - time1).count();
 
     return 0;
 }

@@ -212,7 +212,8 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                         case ActionType::FunctionCall: {
                             auto & fn_call = *static_cast<FunctionCallAction*>(arg.get());
 
-                            recursive_validate(scope, arg, ids, last_id);
+                            auto in_arg = arg;
+                            recursive_validate(scope, in_arg, ids, last_id);
 
                             if (!(return_type == VariableType::B_ANY || fn_call.return_type == return_type)) {throw std::logic_error("Invalid return type.");}
                         }

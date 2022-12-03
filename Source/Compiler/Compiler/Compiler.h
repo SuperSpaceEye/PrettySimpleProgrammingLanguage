@@ -138,6 +138,10 @@ class Compiler {
     static std::vector<ByteCode> concat_code(std::vector<FunctionPart> &parts);
 public:
     static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
+
+    static void
+    prepare_return_from_user_fn(std::vector<ByteCode> &main_part, StackScope &local_scope, int needed_byte_len,
+                                int return_val_pos);
 };
 
 

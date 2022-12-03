@@ -402,56 +402,48 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 }
 
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
-                bool popped = false;
 
                 main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
                 if (ret_call.argument.get() != nullptr) {
+                    int needed_byte_len;
+                    int return_val_pos;
+
                     switch (ret_call.argument->act_type) {
                         case ActionType::VariableCall: {
                             auto &var_call = *static_cast<VariableCall *>(ret_call.argument.get());
                             auto return_data = local_scope.get_var(var_call.var_id);
                             auto first_scope_var = local_scope.get_min_pos_var_of_scope();
 
-                            int needed_byte_len = std::get<0>(return_data.first);
-
-                            if (needed_byte_len != 0) {
-                                //pointer to return position can be easily aligned with return type
-                                if (needed_byte_len == 4) {
-                                    //TODO 1. swap ret_pos (first) with return var (whatever)
-                                    //     2. swap ret_pos (whatever) to the place directly below ret_pos
-                                    //     3. pop scope without popping return var and ret_pos
-                                    //     4. execute call rel_goto
-                                    //     5. after returning, pop ret_pos
-                                    main_part.emplace_back(ByteCode::SWAP);
-                                    put_4_num(main_part, 0);
-                                    put_4_num(main_part, std::get<1>(return_data.first));
-                                    put_4_num(main_part, 4);
-
-                                    //if return variable and positional argument are not already aligned
-                                    if (std::get<1>(return_data) != 4) {
-                                        main_part.emplace_back(ByteCode::SWAP);
-                                        put_4_num(main_part, 4);
-                                        put_4_num(main_part, std::get<1>(return_data.first));
-                                        put_4_num(main_part, 4);
-                                    }
-
-                                    local_scope.push_one_scope_above(return_data.first);
-                                    local_scope.scope.back().erase(local_scope.scope.back().begin());
-                                } else {
-                                    //TODO
-                                }
-                            }
+                            needed_byte_len = std::get<0>(return_data.first);
+                            return_val_pos = std::get<1>(return_data.first);
                         }
                             break;
                         case ActionType::FunctionCall: {
-                            auto &fn_call = *static_cast<FunctionCallAction *>(ret_call.argument.get());
+                            auto &fn_call = *static_cast<FunctionCallAction*>(ret_call.argument.get());
+
+                            return_val_pos = local_scope.get_current_total();
+                            needed_byte_len = type_size(fn_call.return_type);
+
+                            auto in_arg = ret_call.argument;
+                            recursive_compile(part, local_scope, in_arg, is_main, do_not_push_scope, user_nested_fn_call, function_call_nesting+1);
                         }
                             break;
                         case ActionType::StringConst:
+                            throw std::logic_error("Not implemented.");
                             break;
-                        case ActionType::NumericConst:
+                        case ActionType::NumericConst: {
+                            auto &num_const = *static_cast<NumericConst*>(ret_call.argument.get());
+                            return_val_pos = local_scope.get_current_total();
+                            needed_byte_len = type_size(num_const.type);
+
+                            main_part.emplace_back(ByteCode::PUSH);
+                            put_4_num(main_part, 4);
+                            put_4_num(main_part, num_const.value);
+                        }
                             break;
                     }
+
+                    prepare_return_from_user_fn(main_part, local_scope, needed_byte_len, return_val_pos);
                 }
 
                 //return pos will be cleaned up by rel_goto
@@ -465,13 +457,43 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 local_scope.pop_scope();
             }
                 break;
-//            case ActionType::NumericConst:
-//                break;
-//            case ActionType::StringConst:
-//                break;
         }
 
         node = node->next_action;
+    }
+}
+
+void
+Compiler::prepare_return_from_user_fn(std::vector<ByteCode> &main_part, StackScope &local_scope, int needed_byte_len,
+                                      int return_val_pos) {
+    if (needed_byte_len != 0) {
+        //pointer to return position can be easily aligned with return type
+        if (needed_byte_len == 4) {
+            //     1. swap ret_pos (first) with return var (whatever)
+            //     2. swap ret_pos (whatever) to the place directly below ret_pos
+            //     3. pop scope without popping return var and ret_pos
+            //     4. execute call rel_goto
+            //     5. after returning, pop ret_pos
+
+            //I guess it can be replaced with set commands
+            main_part.emplace_back(ByteCode::SWAP);
+            put_4_num(main_part, 0);
+            put_4_num(main_part, return_val_pos);
+            put_4_num(main_part, 4);
+
+            //if return variable and positional argument are not already aligned
+            if (return_val_pos != 4) {
+                main_part.emplace_back(ByteCode::SWAP);
+                put_4_num(main_part, 4);
+                put_4_num(main_part, return_val_pos);
+                put_4_num(main_part, 4);
+            }
+
+            local_scope.push_one_scope_above(needed_byte_len, 0, 0, VariableType::UINT);
+            local_scope.scope.back().erase(local_scope.scope.back().begin());
+        } else {
+            //TODO
+        }
     }
 }
 

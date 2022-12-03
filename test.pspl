@@ -2,25 +2,15 @@ fn int fib(int n) {
     if (less_eq(n, 1)) {
         return(n);
     } endif
-    asgn(n, add(fib(sub(n, 1)), fib(sub(n, 2))));
-    return(n);
-}
-
-fn int return_10() {
-    var int a;
-    asgn(a, 10);
-    return(a);
+    return(add(fib(sub(n, 1)), fib(sub(n, 2))));
 }
 
 fn void main() {
     var int a;
 
-    asgn(a, fib(10));
-
-    return_10();
+    asgn(a, fib(20));
 
     print_num(a);
 
-    #print_num(-10);
     return();
 }
