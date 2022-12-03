@@ -98,7 +98,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
         auto node = tree_res.object_roots[i];
         code_parts.emplace_back();
         code_parts.back().id = static_cast<FunctionDeclaration*>(node.get())->fn_id;
-        recursive_compile(code_parts.back(), scope, node, i == tree_res.main_idx, do_not_push);
+        recursive_compile(code_parts.back(), scope, node, i == tree_res.main_idx, do_not_push, 0);
     }
 
     //so that main function would be the first.
@@ -109,7 +109,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
 
 void
 Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
-                            int &do_not_push_scope) {
+                            int &do_not_push_scope, int user_nested_fn_call) {
     auto & main_part = part.fn_code;
     while (node != nullptr) {
         switch (node->act_type) {
@@ -149,6 +149,11 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     part.calls_from_custom.emplace_back(main_part.size());
                     put_4_num(main_part, 0);
                     scope.push(4, scope.get_current_total(), 0, VariableType::UINT);
+
+                    if (!user_nested_fn_call) {
+                        user_nested_fn_call++;
+                        part.parent_end_of_fn_calls.emplace_back();
+                    }
                 }
 
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
@@ -223,7 +228,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                             //If nested function call, then just recursively process it, as returned value will be on
                             //top of the stack.
                             auto rec_arg = arg;
-                            recursive_compile(part, scope, rec_arg, false, do_not_push_scope);
+                            recursive_compile(part, scope, rec_arg, false, do_not_push_scope, user_nested_fn_call);
                         }
                             break;
                         //If number const, then just push value saved in code to stack.
@@ -281,8 +286,12 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     part.calls_to_custom.emplace_back(main_part.size(), fn_call.fn_id);
                     put_4_num(main_part, 0);
 
-                    part.parent_end_of_fn_call.emplace_back(main_part.size());
+//                    part.parent_end_of_fn_call.emplace_back(main_part.size());
+
+                    part.parent_end_of_fn_calls.back().emplace_back(main_part.size());
                     main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
+
+                    user_nested_fn_call--;
                 }
             }
                 break;
@@ -316,7 +325,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         break;
                     case ActionType::FunctionCall: {
                         auto arg = if_st.argument;
-                        recursive_compile(part, scope, arg, false, do_not_push_scope);
+                        recursive_compile(part, scope, arg, false, do_not_push_scope, 0);
                     }
                         break;
                 }
@@ -329,7 +338,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 // generate code for true branch
                 auto true_br = if_st.true_branch;
-                recursive_compile(part, scope, true_br, false, do_not_push_scope);
+                recursive_compile(part, scope, true_br, false, do_not_push_scope, 0);
                 // goto to jump over the code of the false branch
                 main_part.emplace_back(ByteCode::GOTO);
                 part.relative_gotos_inside_fn.emplace_back(main_part.size());
@@ -339,7 +348,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 auto true_br_end = main_part.size();
                 // generate code for false branch
                 auto false_br = if_st.false_branch;
-                recursive_compile(part, scope, false_br, false, do_not_push_scope);
+                recursive_compile(part, scope, false_br, false, do_not_push_scope, 0);
                 uint32_t end_br_pos = main_part.size();
 
                 // changes pos of the failed expr goto to the end of true branch pos.
@@ -582,30 +591,13 @@ void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {
 
     //TODO map this
     for (auto & part: parts) {
-        //TODO okay, I know how to fix it.
-        //so, if there is a nested custom function like fun1(fun2(fun2(fun1(fun1(a)))))
-        // i need to reverse returning values in this statement.
-
-//        std::vector<std::vector<uint32_t>> reordering;
-//        int last_id = -1;
-//        for (int i = 0; i < part.calls_to_custom.size(); i++) {
-//            if (part.calls_to_custom[i].second != last_id) {
-//                last_id = part.calls_to_custom[i].second;
-//                reordering.emplace_back();
-//            }
-//
-//            reordering.back().push_back(part.parent_end_of_fn_call[i]);
-//        }
-//        std::vector<uint32_t> temp;
-//        for (auto & calls_segment: reordering) {
-//            temp.reserve(calls_segment.size());
-//            for (int i = calls_segment.size()-1; i >= 0; i--) {
-//                temp.emplace_back(calls_segment[i]);
-//            }
-//            part.parent_end_of_fn_call.clear();
-//            part.parent_end_of_fn_call.insert(part.parent_end_of_fn_call.end(), temp.begin(), temp.end());
-//        }
-
+        //positions to return from custom functions need to be in reverse order
+        for (int i = 0; i < part.parent_end_of_fn_calls.size(); i++) {
+            for (int ii = part.parent_end_of_fn_calls[i].size()-1; ii >= 0; ii--) {
+                part.parent_end_of_fn_call.emplace_back(
+                        part.parent_end_of_fn_calls[i][ii]);
+            }
+        }
 
         for (int i = 0; i < part.calls_to_custom.size(); i++) {
             uint32_t fn_call_pos;

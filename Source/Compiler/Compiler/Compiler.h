@@ -112,6 +112,7 @@ struct FunctionPart {
     // pos in code
     std::vector<uint32_t> calls_from_custom;
     std::vector<uint32_t> parent_end_of_fn_call;
+    std::vector<std::vector<uint32_t>> parent_end_of_fn_calls;
 
     std::vector<uint32_t> relative_gotos_inside_fn;
 
@@ -124,7 +125,7 @@ class Compiler {
     static void display_code(std::vector<ByteCode> &code, int &num, std::vector<int64_t> &delimiters);
     static void
     recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
-                      int &do_not_push_scope);
+                      int &do_not_push_scope, int user_nested_fn_call);
     static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode);
 
     static void
