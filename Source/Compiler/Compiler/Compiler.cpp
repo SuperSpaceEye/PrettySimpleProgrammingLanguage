@@ -98,7 +98,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
         auto node = tree_res.object_roots[i];
         code_parts.emplace_back();
         code_parts.back().id = static_cast<FunctionDeclaration*>(node.get())->fn_id;
-        recursive_compile(code_parts.back(), scope, node, i == tree_res.main_idx, do_not_push, 0);
+        recursive_compile(code_parts.back(), scope, node, i == tree_res.main_idx, do_not_push, 0, 0);
     }
 
     //so that main function would be the first.
@@ -107,9 +107,13 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
     return code_parts;
 }
 
+//if function_call_nesting == 0 and return type of called function is not 0, then it will pop that unused value.
+//if user_nested_fn_call is == 0 and the called function is user defined, then it will emplace_back FunctionPart's parent_end_of_fn_calls
+// and put parent_end_of_fn_calls at the end of it. It is needed as at linking stage the order of parent_end_of_fn_calls
+// needs to be reversed.
 void
 Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
-                            int &do_not_push_scope, int user_nested_fn_call) {
+                            int &do_not_push_scope, int user_nested_fn_call, int function_call_nesting) {
     auto & main_part = part.fn_code;
     while (node != nullptr) {
         switch (node->act_type) {
@@ -228,7 +232,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                             //If nested function call, then just recursively process it, as returned value will be on
                             //top of the stack.
                             auto rec_arg = arg;
-                            recursive_compile(part, scope, rec_arg, false, do_not_push_scope, user_nested_fn_call);
+                            recursive_compile(part, scope, rec_arg, false, do_not_push_scope, user_nested_fn_call, function_call_nesting+1);
                         }
                             break;
                         //If number const, then just push value saved in code to stack.
@@ -293,6 +297,15 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                     user_nested_fn_call--;
                 }
+
+                if (fn_call.return_type != VariableType::VOID && !function_call_nesting) {
+                    auto num = type_size(fn_call.return_type);
+
+                    main_part.emplace_back(ByteCode::POP);
+                    put_4_num(main_part, num);
+
+                    scope.scope.back().erase(scope.scope.back().end());
+                }
             }
                 break;
             case ActionType::FunctionDeclaration:
@@ -325,7 +338,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         break;
                     case ActionType::FunctionCall: {
                         auto arg = if_st.argument;
-                        recursive_compile(part, scope, arg, false, do_not_push_scope, 0);
+                        recursive_compile(part, scope, arg, false, do_not_push_scope, 0, 1);
                     }
                         break;
                 }
@@ -336,19 +349,23 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 uint32_t p_to_false_expr = main_part.size();
                 put_4_num(main_part, 4);
 
+                auto local_scope = StackScope{scope};
+
                 // generate code for true branch
                 auto true_br = if_st.true_branch;
-                recursive_compile(part, scope, true_br, false, do_not_push_scope, 0);
+                recursive_compile(part, local_scope, true_br, false, do_not_push_scope, 0, 1);
                 // goto to jump over the code of the false branch
                 main_part.emplace_back(ByteCode::GOTO);
                 part.relative_gotos_inside_fn.emplace_back(main_part.size());
                 uint32_t p_to_true_expr_end = main_part.size();
                 put_4_num(main_part, 4);
 
+                local_scope = StackScope{scope};
+
                 auto true_br_end = main_part.size();
                 // generate code for false branch
                 auto false_br = if_st.false_branch;
-                recursive_compile(part, scope, false_br, false, do_not_push_scope, 0);
+                recursive_compile(part, scope, false_br, false, do_not_push_scope, 0, 1);
                 uint32_t end_br_pos = main_part.size();
 
                 // changes pos of the failed expr goto to the end of true branch pos.
@@ -378,7 +395,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 auto local_scope = StackScope(scope);
 
-                auto times = scope.collapse_to_scope_level();
+                auto times = local_scope.collapse_to_scope_level();
 
                 for (int i = 0; i < times; i++) {
                     main_part.emplace_back(ByteCode::POP_STACK_SCOPE);
@@ -392,8 +409,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     switch (ret_call.argument->act_type) {
                         case ActionType::VariableCall: {
                             auto &var_call = *static_cast<VariableCall *>(ret_call.argument.get());
-                            auto return_data = scope.get_var(var_call.var_id);
-                            auto first_scope_var = scope.get_min_pos_var_of_scope();
+                            auto return_data = local_scope.get_var(var_call.var_id);
+                            auto first_scope_var = local_scope.get_min_pos_var_of_scope();
 
                             int needed_byte_len = std::get<0>(return_data.first);
 
@@ -418,8 +435,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                                         put_4_num(main_part, 4);
                                     }
 
-                                    scope.push_one_scope_above(return_data.first);
-                                    scope.scope.back().erase(scope.scope.back().begin());
+                                    local_scope.push_one_scope_above(return_data.first);
+                                    local_scope.scope.back().erase(local_scope.scope.back().begin());
                                 } else {
                                     //TODO
                                 }
@@ -438,14 +455,14 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 }
 
                 //return pos will be cleaned up by rel_goto
-                auto num = scope.get_current_total() - 4;
+                auto num = local_scope.get_current_total() - 4;
                 if (num > 0) {
                     main_part.emplace_back(ByteCode::POP);
                     put_4_num(main_part, num);
                 }
 
                 main_part.emplace_back(ByteCode::REL_GOTO);
-                scope.pop_scope();
+                local_scope.pop_scope();
             }
                 break;
 //            case ActionType::NumericConst:

@@ -125,7 +125,7 @@ class Compiler {
     static void display_code(std::vector<ByteCode> &code, int &num, std::vector<int64_t> &delimiters);
     static void
     recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
-                      int &do_not_push_scope, int user_nested_fn_call);
+                      int &do_not_push_scope, int user_nested_fn_call, int function_call_nesting);
     static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode);
 
     static void
