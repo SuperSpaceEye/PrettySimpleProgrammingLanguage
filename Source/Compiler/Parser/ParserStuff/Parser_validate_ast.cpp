@@ -15,12 +15,14 @@ void Parser::validate_ast(ASTCreationResult &ast_result, bool debug) {
     int last_id = -1;
 
     for (auto root: ast_result.object_roots) {
-        recursive_validate(scope, root, ids, last_id);
+        auto _root = root;
+        recursive_validate(scope, root, ids, last_id, _root);
     }
 }
 
-void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids,
-                                int &last_id) {
+void
+Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
+                           std::shared_ptr<BaseAction> &prev_root) {
     int do_not_push_scope = 0;
     while (root != nullptr) {
         switch (root->act_type) {
@@ -56,7 +58,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {
                             auto _arg = arg;
-                            recursive_validate(scope, _arg, ids, last_id);
+                            recursive_validate(scope, _arg, ids, last_id, prev_root);
 
                             auto & var_call = *static_cast<VariableCall*>(arg.get());
 
@@ -79,7 +81,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                         case ActionType::FunctionCall: {
                             auto & afn_call = *static_cast<FunctionCallAction*>(arg.get());
 
-                            recursive_validate(scope, arg, ids, last_id);
+                            recursive_validate(scope, arg, ids, last_id, prev_root);
 
                             if (req_type == VariableType::B_ANY) {
                                 if (set_type == VariableType::VOID) {
@@ -142,27 +144,92 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 break;
             case ActionType::ForLoop:
                 break;
-            case ActionType::WhileLoop:
+            case ActionType::WhileLoop: {
+                auto & while_act = *static_cast<WhileLoop*>(root.get());
+
+                switch (while_act.expression->act_type) {
+                    case ActionType::VariableCall: {
+                        auto & var_call = *static_cast<VariableCall*>(while_act.expression.get());
+
+                        recursive_validate(scope, while_act.expression, ids, last_id, prev_root);
+
+                        //TODO add checks for numeric types
+                        if (var_call.type != VariableType::UINT) {
+                            auto to_uint = std::make_shared<FunctionCallAction>(FunctionCallAction{
+                                BaseAction{ActionType::FunctionCall},
+                                FunctionType::BuiltinFunction,
+                                (int)BuiltinIDS::TO_UINT,
+                                0,
+                                VariableType::UINT,
+                                {while_act.expression},
+                                {VariableType::B_ANY}
+                            });
+
+                            while_act.expression = to_uint;
+                        }
+                    }
+                        break;
+                    case ActionType::FunctionCall: {
+                        auto & fn_call = *static_cast<FunctionCallAction*>(while_act.expression.get());
+
+                        auto in = while_act.expression;
+                        recursive_validate(scope, in, ids, last_id, prev_root);
+
+                        if (fn_call.return_type != VariableType::UINT) {
+                            auto to_uint = std::make_shared<FunctionCallAction>(FunctionCallAction{
+                                    BaseAction{ActionType::FunctionCall},
+                                    FunctionType::BuiltinFunction,
+                                    (int)BuiltinIDS::TO_UINT,
+                                    0,
+                                    VariableType::UINT,
+                                    {while_act.expression},
+                                    {VariableType::B_ANY}
+                            });
+
+                            while_act.expression = to_uint;
+                        }
+                    }
+                        break;
+                    case ActionType::NumericConst: {
+                        auto & num_const = *static_cast<NumericConst*>(while_act.expression.get());
+
+                        // works for all types
+                        if (num_const.value == 0) {
+                            // just generate code for the while loop if it will never be called
+                            prev_root->next_action = root->next_action;
+                            goto while_loop_validation_end;
+                        }
+                    }
+                        break;
+                    default:
+                        throw std::logic_error("Wrong statement in while loop expression.");
+                }
+
+                auto body = while_act.body;
+                recursive_validate(scope, body, ids, last_id, prev_root);
+            }
+                while_loop_validation_end:;
                 break;
             case ActionType::IfStatement: {
                 auto & if_call = *static_cast<IfStatement*>(root.get());
 
-                switch (if_call.argument->act_type) {
+                switch (if_call.expression->act_type) {
+                    //TODO make implicit type casting for arguments.
                     case ActionType::VariableCall: {
 
-                        auto to_val = if_call.argument;
-                        recursive_validate(scope, to_val, ids, last_id);
+                        auto to_val = if_call.expression;
+                        recursive_validate(scope, to_val, ids, last_id, prev_root);
 
-                        auto & var_call = *static_cast<VariableCall*>(if_call.argument.get());
+                        auto & var_call = *static_cast<VariableCall*>(if_call.expression.get());
 
                         if (var_call.type != VariableType::UINT) {throw std::logic_error("Type of expression in if statement must be uint.");}
                     }
                         break;
                     case ActionType::FunctionCall: {
-                        auto & fn_call = *static_cast<FunctionCallAction*>(if_call.argument.get());
+                        auto & fn_call = *static_cast<FunctionCallAction*>(if_call.expression.get());
 
-                        auto expr = if_call.argument;
-                        recursive_validate(scope, expr, ids, last_id);
+                        auto expr = if_call.expression;
+                        recursive_validate(scope, expr, ids, last_id, prev_root);
                         if (fn_call.return_type != VariableType::UINT) { throw std::logic_error("Return type of a function in an if statement expression must be uint.");}
                     }
                         break;
@@ -172,9 +239,9 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 auto & if_false = if_call.false_branch;
 
                 auto in = if_true;
-                recursive_validate(scope, in, ids, last_id);
+                recursive_validate(scope, in, ids, last_id, prev_root);
                 in = if_false;
-                recursive_validate(scope, in, ids, last_id);
+                recursive_validate(scope, in, ids, last_id, prev_root);
             }
                 break;
             case ActionType::StartLogicBlock:
@@ -183,7 +250,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                 } else {do_not_push_scope--;}
                 root = root->next_action;
                 ids.emplace_back(last_id);
-                recursive_validate(scope, root, ids, last_id);
+                recursive_validate(scope, root, ids, last_id, prev_root);
                 break;
             case ActionType::EndLogicBlock: {
                 scope.pop_scope();
@@ -213,7 +280,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
                             auto & fn_call = *static_cast<FunctionCallAction*>(arg.get());
 
                             auto in_arg = arg;
-                            recursive_validate(scope, in_arg, ids, last_id);
+                            recursive_validate(scope, in_arg, ids, last_id, prev_root);
 
                             if (!(return_type == VariableType::B_ANY || fn_call.return_type == return_type)) {throw std::logic_error("Invalid return type.");}
                         }
@@ -234,6 +301,7 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
             }
                 break;
         }
+        prev_root = root;
         root = root->next_action;
     }
 }

@@ -155,8 +155,9 @@ class Parser {
 
     static bool is_math_or_logic_token(Token token);
 
-    static void recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids,
-                                   int &last_id);
+    static void
+    recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
+                       std::shared_ptr<BaseAction> &prev_root);
 
     static ASTCreationResult create_ast(TranspilerResult &t_result, bool debug);
     static void validate_ast(ASTCreationResult &ast_result, bool debug);

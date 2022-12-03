@@ -106,7 +106,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 //var type, is_reference, var id
                 std::vector<std::shared_ptr<BaseAction>> arguments;
 
-                if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
+                if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid if statement."};}
 
                 brackets_stack.emplace_back(Bracket::Circle);
 
@@ -148,7 +148,41 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 if (if_statement_nesting) { return;}
             }
                 break;
-            case Token::WHILE:
+            case Token::WHILE: {
+                //var type, is_reference, var id
+                std::vector<std::shared_ptr<BaseAction>> arguments;
+
+                if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid while statement."};}
+
+                brackets_stack.emplace_back(Bracket::Circle);
+
+                if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {throw std::logic_error("Emtpy while statement");}
+                while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
+                    auto arg_root = std::make_shared<BaseAction>();
+                    auto in_root = arg_root;
+                    recursive_create_ast(tokens, logic_indentation, function_declaration,
+                                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+                    arguments.emplace_back(arg_root->next_action);
+                }
+
+                if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement.");}
+
+                auto body = std::make_shared<BaseAction>(BaseAction{});
+
+                if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Incorrect while declaration.");}
+                auto in_root = body;
+                recursive_create_ast(tokens, logic_indentation, function_declaration,
+                                     to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+
+                auto while_action = std::make_shared<WhileLoop>(WhileLoop{
+                    BaseAction{ActionType::WhileLoop},
+                    arguments[0],
+                    body->next_action
+                });
+
+                root->next_action = while_action;
+                root = while_action;
+            }
                 break;
             case Token::FOR:
                 break;
@@ -313,7 +347,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
             }
                 break;
 
-            case Token::ENDIF:
+            case Token::END:
             case Token::ELSE:
                 return;
 

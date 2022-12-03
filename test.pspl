@@ -1,16 +1,35 @@
-fn int fib(int n) {
-    if (less_eq(n, 1)) {
-        return(n);
-    } endif
-    return(add(fib(sub(n, 1)), fib(sub(n, 2))));
+#fn int fib(int n) {
+#    if (less_eq(n, 1)) {
+#        return(n);
+#    } end
+#    return(add(fib(sub(n, 1)), fib(sub(n, 2))));
+#}
+
+fn int while_loop(int n) {
+    var int counter;
+
+    while (more(n, 0)) {
+        var int nn;
+        asgn(nn, n);
+        asgn_sub(n, 1);
+
+        while(more(nn, 0)) {
+            asgn_add(counter, 1);
+
+            print_num(n);
+            print_num(nn);
+            print_num(counter);
+            print_num(-1);
+
+            asgn_sub(nn, 1);
+        } end
+    } end
+
+    return(counter);
 }
 
 fn void main() {
-    var int a;
-
-    asgn(a, fib(20));
-
-    print_num(a);
+    print_num(while_loop(100));
 
     return();
 }

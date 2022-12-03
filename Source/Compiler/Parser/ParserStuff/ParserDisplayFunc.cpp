@@ -91,20 +91,12 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
             std::cout << pi(indentation) << "Call of " << reg.id_to_string(var.var_id) << "\n";
         }
             break;
-        case ActionType::ForLoop: {
-
-        }
-            break;
-        case ActionType::WhileLoop: {
-
-        }
-            break;
         case ActionType::IfStatement: {
             auto & if_statement = *static_cast<IfStatement*>(root);
 
             std::cout << pi(indentation) << "If statement\n";
             std::cout << pi(indentation+2) << "Expression:\n";
-            display_root(if_statement.argument.get(), indentation+4, reg);
+            display_root(if_statement.expression.get(), indentation + 4, reg);
             std::cout << pi(indentation+2) << "If true:\n";
             display_root(if_statement.true_branch.get(), indentation+4, reg);
             std::cout << pi(indentation+2) << "If false: \n";
@@ -135,6 +127,20 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
         case ActionType::StringConst: {
             auto & str_const = *static_cast<StringConst*>(root);
             std::cout << pi(indentation) << "Call of string const \"" << str_const_to_str(str_const) << "\"\n";
+        }
+            break;
+        case ActionType::WhileLoop: {
+            auto & while_act = *static_cast<WhileLoop*>(root);
+            std::cout << pi(indentation) << "While loop\n";
+            std::cout << pi(indentation+2) << "Expression:\n";
+            display_root(while_act.expression.get(), indentation+4, reg);
+            std::cout << pi(indentation+2) << "Body:\n";
+            display_root(while_act.body.get(), indentation+4, reg);
+            std::cout << pi(indentation) << "End while loop\n";
+        }
+            break;
+        case ActionType::ForLoop: {
+
         }
             break;
     }

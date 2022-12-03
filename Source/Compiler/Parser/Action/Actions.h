@@ -25,9 +25,14 @@ struct FunctionCallAction: public BaseAction {
 };
 
 struct IfStatement: public BaseAction {
-    std::shared_ptr<BaseAction> argument;
+    std::shared_ptr<BaseAction> expression;
     std::shared_ptr<BaseAction> true_branch;
     std::shared_ptr<BaseAction> false_branch;
+};
+
+struct WhileLoop: public BaseAction {
+    std::shared_ptr<BaseAction> expression;
+    std::shared_ptr<BaseAction> body;
 };
 
 struct ReturnCall: public BaseAction {

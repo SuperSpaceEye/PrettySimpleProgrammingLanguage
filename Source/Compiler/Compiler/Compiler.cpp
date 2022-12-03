@@ -312,15 +312,43 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 break;
             case ActionType::ForLoop:
                 break;
-            case ActionType::WhileLoop:
+            case ActionType::WhileLoop: {
+                auto & while_act = *static_cast<WhileLoop*>(node.get());
+
+                //save pos value of start to return if expr is true
+                uint32_t while_loop_start_pos = main_part.size();
+
+                //generate code for expression
+                recursive_compile(part, scope, while_act.expression, is_main, do_not_push_scope, user_nested_fn_call, function_call_nesting+1);
+
+                //check expression
+                main_part.emplace_back(ByteCode::COND_GOTO);
+                uint32_t false_expr_goto_pos = main_part.size();
+                part.relative_gotos_inside_fn.emplace_back(false_expr_goto_pos);
+                put_4_num(main_part, 0);
+
+                //expression result will be removed by the cond_goto.
+                scope.scope.back().pop_back();
+
+                //generate code for body of while loop
+                recursive_compile(part, scope, while_act.body, is_main, do_not_push_scope, user_nested_fn_call, function_call_nesting);
+
+                //go back to the start
+                main_part.emplace_back(ByteCode::GOTO);
+                part.relative_gotos_inside_fn.emplace_back(main_part.size());
+                put_4_num(main_part, while_loop_start_pos);
+
+                //if expression is false, it will go
+                *(uint32_t*)&main_part[false_expr_goto_pos] = main_part.size();
+            }
                 break;
             case ActionType::IfStatement: {
                 //GENERATE CODE FOR ARGUMENT
                 auto & if_st = *static_cast<IfStatement*>(node.get());
 
-                switch (if_st.argument->act_type) {
+                switch (if_st.expression->act_type) {
                     case ActionType::VariableCall: {
-                        auto & var_call = *static_cast<VariableCall*>(if_st.argument.get());
+                        auto & var_call = *static_cast<VariableCall*>(if_st.expression.get());
                         auto [data, scope_level] = scope.get_var(var_call.var_id);
 
                         uint32_t var_size = std::get<0>(data);
@@ -337,7 +365,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                     }
                         break;
                     case ActionType::FunctionCall: {
-                        auto arg = if_st.argument;
+                        auto arg = if_st.expression;
                         recursive_compile(part, scope, arg, false, do_not_push_scope, 0, 1);
                     }
                         break;

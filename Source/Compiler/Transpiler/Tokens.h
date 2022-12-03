@@ -26,7 +26,7 @@ enum class Token {
     STRING,
     IF,
     ELSE,
-    ENDIF,
+    END,
     WHILE,
     FOR,
 
@@ -86,7 +86,7 @@ const std::vector<std::string> reserved_tokens {
     "string",
     "if",
     "else",
-    "endif",
+    "end",
     "while",
     "for",
 
