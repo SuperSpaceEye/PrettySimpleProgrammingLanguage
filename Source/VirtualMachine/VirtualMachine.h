@@ -14,8 +14,7 @@
 
 class VirtualMachine {
     std::vector<uint8_t> stack{};
-    std::vector<int> stack_scope{0};
-    std::vector<int> temp_levels = {};
+    std::vector<uint32_t> stack_frames;
 
     uint32_t cur = 0;
 

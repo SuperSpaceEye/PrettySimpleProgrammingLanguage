@@ -58,7 +58,7 @@ const std::vector<std::tuple<std::string, VariableType, std::vector<std::pair<Va
         {"mul",      VariableType::B_ANY, {{VariableType::B_ANY,  false}, {VariableType::B_ANY, false}}},
         {"div",      VariableType::B_ANY, {{VariableType::B_ANY,  false}, {VariableType::B_ANY, false}}},
 
-        {"asgn_add", VariableType::VOID,  {{VariableType::B_ANY,  true}, {VariableType::B_ANY, false}}},
+        {"asgn_add", VariableType::VOID,   {{VariableType::B_ANY,  true}, {VariableType::B_ANY, false}}},
         {"asgn_sub",  VariableType::VOID,  {{VariableType::B_ANY,  true}, {VariableType::B_ANY, false}}},
         {"asgn_mul",  VariableType::VOID,  {{VariableType::B_ANY,  true}, {VariableType::B_ANY, false}}},
         {"asgn_div",  VariableType::VOID,  {{VariableType::B_ANY,  true}, {VariableType::B_ANY, false}}},

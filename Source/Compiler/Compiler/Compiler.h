@@ -13,15 +13,15 @@
 #include "../Parser/Parser.h"
 
 struct StackScope {
-    //byte_len, pos, id, type
-    std::vector<std::vector<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>>> scope{{}};
+    //byte_len, id, type
+    std::vector<std::vector<std::tuple<uint32_t, uint32_t, VariableType>>> scope{{}};
 
     //user function can have scopes inside it. To properly return from it, all allocated stack values
     //in scope should be removed.
     std::vector<int> scope_level{0};
 
     void push_scope() {scope.emplace_back();}
-    std::vector<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>> pop_scope() {
+    std::vector<std::tuple<uint32_t, uint32_t, VariableType>> pop_scope() {
         auto temp_scope = scope.back();
         scope.pop_back();
         return temp_scope;
@@ -40,33 +40,31 @@ struct StackScope {
         scope_level.pop_back();
         return times;
     }
-    void push(uint32_t num, uint32_t pos, uint32_t id, VariableType type) {
-        scope.back().emplace_back(num, pos, id, type);
+    void push(uint32_t num, uint32_t id, VariableType type) {
+        scope.back().emplace_back(num, id, type);
     }
-    void push_one_scope_above(uint32_t num, uint32_t pos, uint32_t id, VariableType type) {
-        scope[scope.size()-2].emplace_back(num, pos, id, type);
+    void push_one_scope_above(uint32_t num, uint32_t id, VariableType type) {
+        scope[scope.size()-2].emplace_back(num, id, type);
     }
-    void push_one_scope_above(std::tuple<uint32_t, uint32_t, uint32_t, VariableType> var) {
+    void push_one_scope_above(std::tuple<uint32_t, uint32_t, VariableType> var) {
         scope[scope.size() - 2].push_back(var);
-
     }
     //returns var and scope level
-    std::pair<std::tuple<uint32_t, uint32_t, uint32_t, VariableType>, int> get_var(int id) {
+    std::pair<std::tuple<uint32_t, uint32_t, VariableType>, int> get_var(int id) {
         for (int i = scope.size()-1; i >= 0; i--) {
             for (auto & item: scope[i]) {
-                volatile int ahaha = std::get<2>(item);
-                if (std::get<2>(item) == id) {return {item, i};}
+                if (std::get<1>(item) == id) {return {item, i};}
             }
         }
         throw std::logic_error("Shouldn't happen.");
     }
-    std::tuple<uint32_t, uint32_t, uint32_t, VariableType> get_min_pos_var_of_scope() {
+    std::tuple<uint32_t, uint32_t, VariableType> get_min_pos_var_of_scope() {
         return scope.back()[0];
     }
     void delete_from_scope(int id) {
         for (int i = 0; i < scope.back().size(); i++) {
             auto & item = scope.back()[i];
-            if (std::get<2>(item) == id) {
+            if (std::get<1>(item) == id) {
                 scope.back().erase(scope.back().begin() + i);
                 return;
             }
@@ -87,14 +85,29 @@ struct StackScope {
         return total;
     }
 
-    int get_total_between(int start, int stop) {
+    int get_total() {
         int total = 0;
-        for (int i = start; i < stop; i++) {
-            for (auto item: scope[i]) {
+        for (auto & _scope: scope) {
+            for (auto & item: _scope) {
                 total += std::get<0>(item);
             }
         }
         return total;
+    }
+
+    int get_pos(int id) {
+        uint32_t pos = 0;
+        for (auto & _scope: scope) {
+            for (auto & item: _scope) {
+                if (std::get<1>(item) == id) {
+                    return pos;
+                }
+
+                pos += std::get<0>(item);
+            }
+        }
+
+        throw std::logic_error("Shouldn't happen.");
     }
 
     StackScope()=default;
@@ -125,7 +138,8 @@ class Compiler {
     static void display_code(std::vector<ByteCode> &code, int &num, std::vector<int64_t> &delimiters);
     static void
     recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
-                      int &do_not_push_scope, int user_nested_fn_call, int function_call_nesting);
+                      int &do_not_push_scope, int user_nested_fn_call, int function_call_nesting,
+                      int frame_nesting);
     static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode);
 
     static void

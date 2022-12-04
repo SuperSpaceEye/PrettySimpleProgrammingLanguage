@@ -118,28 +118,23 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 auto amount = get_4_num(code, cur);
                 cur+=4;
                 for (int i = 0; i < amount; i++) {
-                    std::swap(stack[i+pos1+stack_scope.back()],
-                              stack[i+pos2+stack_scope.back()]);
+                    std::swap(stack[i+pos1+stack_frames.back()],
+                              stack[i+pos2+stack_frames.back()]);
                 }
             }
                 break;
             case ByteCode::COPY_PUSH: {
                 cur++;
-                auto temp = get_4_num(code, cur);
-                auto pos = (int32_t)*(uint32_t*)&temp;
+                auto pos = get_4_num(code, cur);
                 cur+=4;
                 auto amount = get_4_num(code, cur);
                 cur+=4;
+                auto offset = get_4_num(code, cur);
+                cur+=4;
                 stack.reserve(stack.size()+amount);
 
-                if (pos >= 0) {
-                    for (int i = 0; i < amount; i++) {
-                        stack.emplace_back(stack[pos + i + stack_scope.back()]);
-                    }
-                } else {
-                    for (int i = 0; i < amount; i++) {
-                        stack.emplace_back(stack[pos + i + temp_levels.back()]);
-                    }
+                for (int i = 0; i < amount; i++) {
+                    stack.emplace_back(stack[pos + i + stack_frames[stack_frames.size()-offset-1]]);
                 }
             }
                 break;
@@ -173,42 +168,27 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 cur = pos;
             }
                 break;
-            case ByteCode::PUSH_STACK_SCOPE:
-                stack_scope.emplace_back(stack.size());
+            case ByteCode::PUSH_STACK_FRAME:
+                stack_frames.emplace_back(stack.size());
                 cur++;
                 break;
-            case ByteCode::POP_STACK_SCOPE:
-                stack_scope.pop_back();
-                cur++;
-                break;
-            case ByteCode::PUSH_CURRENT_STACK_LEVEL:
-                stack.resize(stack.size()+4);
-                *((uint32_t*)&stack[stack.size()-4]) = stack_scope.back();
+            case ByteCode::POP_STACK_FRAME:
+                stack_frames.pop_back();
                 cur++;
                 break;
             case ByteCode::GET_ABSOLUTE_POS: {
-                //position can be negative if var is below current scope but
-                // is in function frame.
-                auto temp = get_4_num(stack, stack.size()-8);
-                auto rel_var_pos = (int32_t)*(uint32_t*)&temp;
-                auto var_level = get_4_num(stack, stack.size()-4);
+                cur++;
+                auto rel_var_pos = get_4_num(code, cur);
+                cur+=4;
+                auto offset = get_4_num(code, cur);
+                cur+=4;
 
-                auto abs_pos = var_level + rel_var_pos;
+                auto abs_pos = rel_var_pos + stack_frames[stack_frames.size()-offset-1];
 
-                stack.resize(stack.size()-4);
+                stack.resize(stack.size()+4);
 
                 *((uint32_t*)&stack[stack.size()-4]) = abs_pos;
-                cur++;
             }
-                break;
-            case ByteCode::START_ARGUMENTS:
-                temp_levels.emplace_back(stack.size());
-                cur++;
-                break;
-            case ByteCode::END_ARGUMENTS:
-                stack_scope.emplace_back(temp_levels.back());
-                temp_levels.pop_back();
-                cur++;
                 break;
             default:
                 throw std::logic_error("Unknown word. This is probably a bug in the compiler. Terminating.");
