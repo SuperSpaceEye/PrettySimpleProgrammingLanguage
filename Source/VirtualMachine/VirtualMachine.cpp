@@ -300,8 +300,20 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
         case BuiltinIDS::INPUT:
             break;
         case BuiltinIDS::PRINT_NUM: {
-            uint32_t res = get_4_num(stack, stack.size()-4);
-            std::cout << *(int32_t*)&res << "\n";
+            auto type = (VariableType)get_4_num(stack, stack.size()-8);
+            uint32_t num = get_4_num(stack, stack.size()-4);
+
+            switch (type) {
+                case VariableType::INT:
+                    std::cout << *(int32_t*)&num << "\n";
+                    break;
+                case VariableType::UINT:
+                    std::cout << *(uint32_t *)&num << "\n";
+                    break;
+                case VariableType::FLOAT:
+                    std::cout << *(float*)&num << "\n";
+                    break;
+            }
         }
             break;
     }

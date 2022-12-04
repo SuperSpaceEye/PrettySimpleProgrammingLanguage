@@ -327,7 +327,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 auto type = convert_token_type(tokens[++i]);
                 auto value = tokens[++i];
                 temp_root = std::make_shared<NumericConst>(NumericConst{BaseAction{ActionType::NumericConst},
-                                                                       type, (uint32_t)value});
+                                                                       type, *(uint32_t*)&value});
                 root->next_action = temp_root;
                 root = temp_root;
             }

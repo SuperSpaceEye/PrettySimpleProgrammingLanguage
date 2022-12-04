@@ -81,7 +81,7 @@ const std::vector<std::tuple<std::string, VariableType, std::vector<std::pair<Va
         {"to_float", VariableType::FLOAT, {{VariableType::B_ANY,  false}}},
         {"return",   VariableType::VOID,  {{VariableType::B_ANY,  false}}},
         {"input",    VariableType::STRING,{{VariableType::STRING, false}}},
-        {"print_num",VariableType::VOID,  {{VariableType::INT,    false}}},
+        {"print_num",VariableType::VOID,  {{VariableType::B_ANY,  false}}},
 };
 
 const int builtin_IDS_count = (int)BuiltinIDS::__COUNT;

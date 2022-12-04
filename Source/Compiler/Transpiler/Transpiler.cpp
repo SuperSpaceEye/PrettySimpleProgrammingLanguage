@@ -116,14 +116,15 @@ std::vector<Token> Transpiler::get_token(std::string &word, WordRegister &wreg) 
 
     number_result = is_number(word);
     if (number_result.is_number) {
+        to_return.emplace_back(Token::NUMBER);
         if (number_result.had_dot) {
-            to_return.emplace_back(Token::NUMBER);
             to_return.emplace_back(Token::FLOAT);
-            to_return.emplace_back((Token)(std::stof(word)));
+            auto num = std::stof(word);
+            to_return.emplace_back(*(Token*)&num);
         } else {
-            to_return.emplace_back(Token::NUMBER);
             to_return.emplace_back(Token::INT);
-            to_return.emplace_back((Token)(std::stoi(word)));
+            auto num = std::stoi(word);
+            to_return.emplace_back(*(Token*)&num);
         }
         goto end;
     }
