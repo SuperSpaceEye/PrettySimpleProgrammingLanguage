@@ -221,37 +221,7 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
         }
             break;
         case BuiltinIDS::ASGN_ADD: {REF_OPERATION(+)}break;
-//        case BuiltinIDS::ASGN_SUB: {REF_OPERATION(-)}break;
-        case BuiltinIDS::ASGN_SUB: {
-            auto arg1_type = (VariableType)get_4_num(stack, stack.size()-16);
-            auto arg1_pos = get_4_num(stack, stack.size()-12);
-            auto arg2_type = (VariableType)get_4_num(stack, stack.size()-8);
-            auto arg2_val  = get_4_num(stack, stack.size()-4);
-
-            auto arg1_val = get_4_num(stack, arg1_pos);
-
-            uint32_t result;
-            arg2_val = cast_to_type(arg2_val, arg2_type, arg1_type);
-
-            switch (arg1_type) {
-                case VariableType::INT: {
-                    int32_t temp = *(int32_t*)&arg1_val - *(int32_t*)&arg2_val;
-                    result = *(uint32_t*)&temp;
-                }
-                break;
-                case VariableType::UINT:
-                    result = arg1_val - arg2_val;
-                    break;
-                case VariableType::FLOAT: {
-                    float temp = *(float*)&arg1_val - *(float*)&arg2_val;
-                    result = *(uint32_t*)&temp;
-                }
-                break;
-            }
-
-            *((uint32_t*)&stack[arg1_pos]) = result;
-        }
-            break;
+        case BuiltinIDS::ASGN_SUB: {REF_OPERATION(-)}break;
         case BuiltinIDS::ASGN_MUL: {REF_OPERATION(*)}break;
         case BuiltinIDS::ASGN_DIV: {REF_OPERATION(/)}break;
 

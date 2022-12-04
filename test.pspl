@@ -1,11 +1,11 @@
-fn int fib(int n) {
+fn int fib_test(int n) {
     if (less_eq(n, 1)) {
         return(n);
     } end
-    return(add(fib(sub(n, 1)), fib(sub(n, 2))));
+    return(add(fib_test(sub(n, 1)), fib_test(sub(n, 2))));
 }
 
-fn int while_loop(int n) {
+fn int while_loop_test(int n) {
     var int counter;
 
     while (more(n, 0)) {
@@ -27,13 +27,28 @@ fn int while_loop(int n) {
     return(counter);
 }
 
-#fn int test_add(int a) {
-#    return(add(a, 200));
-#}
+fn int test1(int n) {
+    var int a;
+    asgn(a, 10);
+    asgn(n, add(n, a));
+
+    return(n);
+}
+
+fn int test2(int n) {
+    var int a;
+    asgn(a, mul(n, 100));
+    return(a);
+}
 
 fn void main() {
-    print_num(while_loop(168));
-    print_num(fib(15));
+    #210
+    print_num(while_loop_test(20));
+    #55
+    print_num(fib_test(10));
+
+    #280010
+    print_num(test1(test2(test2(test1(test1(8))))));
 
     return();
 }
