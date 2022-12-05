@@ -29,6 +29,18 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
             case ActionType::VariableDeclaration: {
                 auto & var_decl = *static_cast<VariableDeclaration*>(root.get());
                 if (scope.check_id_in_lscope(var_decl.var_id)) {throw std::logic_error("Cannot redeclare a variable in same scope");}
+                switch (var_decl.var_type) {
+                    case VariableType::VOID:
+                    case VariableType::B_ANY:
+                        throw std::logic_error("Can't declare variable with type void");
+                        break;
+                    case VariableType::INT:
+                    case VariableType::UINT:
+                    case VariableType::FLOAT:
+                    case VariableType::ARRAY:
+                    case VariableType::STRING:
+                        break;
+                }
                 scope.push_id(var_decl.var_id, var_decl.var_type);
             }
                 break;
@@ -48,12 +60,13 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                     throw std::logic_error("Num required arguments does not equal num given arguments");
                 }
 
+                auto set_type = VariableType::VOID;
                 for (int i = 0; i < fn_call.arguments.size(); i++) {
                     auto arg = fn_call.arguments[i];
-                    auto req_type = std::get<1>(scope.get_fn(fn_call.name_id))[i];
+                    auto val = std::get<1>(scope.get_fn(fn_call.name_id))[i];
+                    auto req_type = val.first;
+                    auto is_ref = val.second;
                     fn_call.required_arguments.emplace_back(req_type);
-
-                    auto set_type = VariableType::VOID;
 
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {
@@ -66,10 +79,9 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                                 if (set_type == VariableType::VOID) {
                                     set_type = var_call.type;
                                     if (fn_call.return_type == VariableType::B_ANY) { fn_call.return_type = set_type; }
-                                } else {
-                                    if (var_call.type != set_type) {
-                                        throw std::logic_error("Types in arguments in B_ANY do not match");
-                                    }
+                                }
+                                if (var_call.type != set_type) {
+                                    throw std::logic_error("Types in arguments in B_ANY do not match");
                                 }
                             }
 
@@ -81,16 +93,17 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                         case ActionType::FunctionCall: {
                             auto & afn_call = *static_cast<FunctionCallAction*>(arg.get());
 
+                            if (is_ref) {throw std::logic_error("Function argument requires reference to variable.");}
+
                             recursive_validate(scope, arg, ids, last_id, prev_root);
 
                             if (req_type == VariableType::B_ANY) {
                                 if (set_type == VariableType::VOID) {
                                     set_type = afn_call.return_type;
                                     if (fn_call.return_type == VariableType::B_ANY) { fn_call.return_type = set_type; }
-                                } else {
-                                    if (afn_call.return_type != set_type) {
-                                        throw std::logic_error("Types in arguments in B_ANY do not match");
-                                    }
+                                }
+                                if (afn_call.return_type != set_type) {
+                                    throw std::logic_error("Types in arguments in B_ANY do not match");
                                 }
                             }
 
@@ -102,14 +115,15 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                         case ActionType::NumericConst: {
                             auto & num_arg = *static_cast<NumericConst*>(arg.get());
 
+                            if (is_ref) {throw std::logic_error("Function argument requires reference to variable.");}
+
                             if (req_type == VariableType::B_ANY) {
                                 if (set_type == VariableType::VOID) {
                                     set_type = num_arg.type;
                                     if (fn_call.return_type == VariableType::B_ANY) { fn_call.return_type = set_type; }
-                                } else {
-                                    if (num_arg.type != set_type) {
-                                        throw std::logic_error("Types in arguments in B_ANY do not match");
-                                    }
+                                }
+                                if (num_arg.type != set_type) {
+                                    throw std::logic_error("Types in arguments in B_ANY do not match");
                                 }
                             }
 
@@ -130,8 +144,8 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                 auto & fn_decl = *static_cast<FunctionDeclaration*>(root.get());
                 last_id = fn_decl.fn_id;
 
-                auto args = std::vector<VariableType>{};
-                for (auto & arg: fn_decl.arguments) {args.emplace_back(std::get<0>(arg));}
+                auto args = std::vector<std::pair<VariableType, bool>>{};
+                for (auto & arg: fn_decl.arguments) {args.emplace_back(std::get<0>(arg), std::get<1>(arg));}
 
                 scope.push_fn(fn_decl.fn_id, args, fn_decl.return_type);
 

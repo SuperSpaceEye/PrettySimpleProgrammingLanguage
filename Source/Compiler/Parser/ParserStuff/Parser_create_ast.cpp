@@ -42,8 +42,6 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
 
         switch (token) {
             case Token::FUNCTION: {
-//                if (function_declaration) {throw std::logic_error("Functions cannot be declared inside another functions.");}
-//                if (logic_indentation != 0) { throw std::logic_error{"Functions should be declared at top level."}; }
                 function_declaration = true;
 
                 bool is_inline = false;
@@ -83,7 +81,6 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
             }
                 break;
             case Token::VAR:
-                //TODO
                 if (logic_indentation == 0) {throw std::logic_error{"Can't declare global variable."};}
                 if (tokens[++i] == Token::ARRAY) {
 

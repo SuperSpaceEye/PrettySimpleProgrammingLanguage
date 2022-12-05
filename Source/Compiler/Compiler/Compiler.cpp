@@ -160,7 +160,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                             uint32_t var_size = std::get<0>(data);
 
-                            int var_pos = scope.get_pos(std::get<1>(data));
+                            uint32_t var_pos = scope.get_pos(std::get<1>(data));
 
                             //if var is reference, then function will modify stack pos directly.
                             //if ref of b_any then must also place type information
@@ -213,8 +213,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         }
                             break;
                         //If number const, then just push value saved in code to stack.
-                        //TODO numeric const can't be referenced. Needs to create a temp var.
-                        //TODO make check for numeric consts so that they can't be put as ref arg
                         case ActionType::NumericConst: {
                             auto & num_call = *static_cast<NumericConst*>(arg.get());
                             if (fn_call.required_arguments[i] == VariableType::B_ANY) {

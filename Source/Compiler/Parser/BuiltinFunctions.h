@@ -43,10 +43,6 @@ enum class BuiltinIDS{
     RETURN,
     INPUT,
     PRINT_NUM,
-
-    //TODO
-
-    __COUNT,
 };
 
 //name, return type, arguments (type, ref)
@@ -83,7 +79,5 @@ const std::vector<std::tuple<std::string, VariableType, std::vector<std::pair<Va
         {"input",    VariableType::STRING,{{VariableType::STRING, false}}},
         {"print_num",VariableType::VOID,  {{VariableType::B_ANY,  false}}},
 };
-
-const int builtin_IDS_count = (int)BuiltinIDS::__COUNT;
 
 #endif //ANOTHERPROGRAMMINGLANGUAGE_BUILTINFUNCTIONS_H

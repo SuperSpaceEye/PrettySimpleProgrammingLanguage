@@ -64,7 +64,7 @@ struct TreeResult {
 
 struct ValidateScope {
     std::vector<std::vector<std::tuple<int, VariableType>>> var_scope;
-    std::vector<std::vector<std::tuple<int, std::vector<VariableType>, VariableType>>> fn_scope{{}};
+    std::vector<std::vector<std::tuple<int, std::vector<std::pair<VariableType, bool>>, VariableType>>> fn_scope{{}};
     void push_scope() {
         var_scope.emplace_back();
         fn_scope.emplace_back();
@@ -76,7 +76,7 @@ struct ValidateScope {
     void push_id(int id, VariableType type) {
         var_scope.back().emplace_back(id, type);
     }
-    void push_fn(int id, const std::vector<VariableType>& arguments_types, VariableType return_type) {
+    void push_fn(int id, const std::vector<std::pair<VariableType, bool>>& arguments_types, VariableType return_type) {
         fn_scope.back().emplace_back(id, arguments_types, return_type);
     }
     bool check_id(int id) {
@@ -95,7 +95,7 @@ struct ValidateScope {
         }
         return false;
     }
-    std::tuple<bool, const std::vector<VariableType>&, VariableType> get_fn(int id) {
+    std::tuple<bool, const std::vector<std::pair<VariableType, bool>>&, VariableType> get_fn(int id) {
         if (!check_fn_id(id)) {throw std::logic_error("Function was not declared in this scope.");}
         for (int i = fn_scope.size()-1; i >= 0; i--) {
             for (auto & fn: fn_scope[i]) {
@@ -125,8 +125,8 @@ struct ValidateScope {
         for (int id: reg.builtins) {
             auto bnf = reg.get_builtin(id);
 
-            std::vector<VariableType> args;
-            for (auto & arg: std::get<2>(bnf.second)) {args.emplace_back(arg.first);}
+            std::vector<std::pair<VariableType, bool>> args;
+            for (auto & arg: std::get<2>(bnf.second)) {args.emplace_back(arg.first, arg.second);}
 
             auto ret_type = std::get<1>(bnf.second);
 
