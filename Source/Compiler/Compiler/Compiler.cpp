@@ -3,15 +3,15 @@
 
 #include "Compiler.h"
 
-std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data, bool debug) {
+std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data, const Options &options) {
     auto res = Transpiler::transpile_data(str_data);
-    if (debug) {Transpiler::display_tokens(res);}
+    if (options.debug.show_transpiler_output) {Transpiler::display_tokens(res);}
 
-    auto tree = Parser::create_tree(res, debug);
+    auto tree = Parser::create_tree(res, options);
     auto parts = compile_(tree);
-    auto code = construct_program(parts);
+    auto code = compile_to_bytecode(parts, options);
 
-    if (debug) {
+    if (options.debug.show_compiler_output) {
         int num = 0;
 
         std::vector<int64_t> delimiters;
@@ -592,8 +592,8 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
     }
 }
 
-std::vector<ByteCode> Compiler::construct_program(std::vector<FunctionPart> &parts) {
-    for (auto & part: parts) { batch_pop_push(part);}
+std::vector<ByteCode> Compiler::compile_to_bytecode(std::vector<FunctionPart> &parts, const Options &options) {
+    if (options.optimization.batch_byte_words) {for (auto &part: parts) { batch_byte_words(part); }}
 
     link_code_parts(parts);
 
@@ -601,7 +601,7 @@ std::vector<ByteCode> Compiler::construct_program(std::vector<FunctionPart> &par
 }
 
 // TODO
-void Compiler::batch_pop_push(FunctionPart &part) {
+void Compiler::batch_byte_words(FunctionPart &part) {
 //    uint32_t cur = 0;
 //
 //    ByteCode last_command = ByteCode::REL_GOTO;

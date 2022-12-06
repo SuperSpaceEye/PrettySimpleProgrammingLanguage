@@ -12,6 +12,7 @@
 #include "../Transpiler/Transpiler.h"
 #include "Action/Actions.h"
 #include "BuiltinFunctions.h"
+#include "../OptionsContainer.h"
 
 class IdRegister {
 public:
@@ -160,17 +161,26 @@ class Parser {
                        std::shared_ptr<BaseAction> &prev_root);
 
     static ASTCreationResult create_ast(TranspilerResult &t_result, bool debug);
-    static void validate_ast(ASTCreationResult &ast_result, bool debug);
+    static void validate_ast(ASTCreationResult &ast_result);
     static void show_ast(ASTCreationResult &ast_result, IdRegister &id_reg);
     static TreeResult extract_nested_functions(ASTCreationResult &ast_result);
 
     static int get_main_fn_idx(TreeResult &t_res, int main_id);
+
+    static void
+    get_arguments(int end_num, const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
+                  ASTCreationResult &to_return, IdRegister &reg, int &i, std::vector<Bracket> &brackets_stack,
+                  std::vector<std::shared_ptr<BaseAction>> &arguments, std::string name);
+
+    static void
+    make_implicit_cast(std::shared_ptr<BaseAction> &target, BuiltinIDS function_id, VariableType original_type,
+                       VariableType target_type);
 public:
 
-    static TreeResult create_tree(TranspilerResult &t_result, bool debug) {
+    static TreeResult create_tree(TranspilerResult &t_result, const Options &options) {
         //TODO reorder so that extract_nested is before validate
-        auto ast = Parser::create_ast(t_result, debug);
-        Parser::validate_ast(ast, debug);
+        auto ast = Parser::create_ast(t_result, options.debug.show_parser_output);
+        Parser::validate_ast(ast);
         auto tree = extract_nested_functions(ast);
         return tree;
     }

@@ -97,10 +97,14 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
             std::cout << pi(indentation) << "If statement\n";
             std::cout << pi(indentation+2) << "Expression:\n";
             display_root(if_statement.expression.get(), indentation + 4, reg);
-            std::cout << pi(indentation+2) << "If true:\n";
-            display_root(if_statement.true_branch.get(), indentation+4, reg);
-            std::cout << pi(indentation+2) << "If false: \n";
-            display_root(if_statement.false_branch.get(), indentation+4, reg);
+            if (if_statement.true_branch != nullptr) {
+                std::cout << pi(indentation + 2) << "If true:\n";
+                display_root(if_statement.true_branch.get(), indentation + 4, reg);
+            }
+            if (if_statement.false_branch != nullptr) {
+                std::cout << pi(indentation + 2) << "If false: \n";
+                display_root(if_statement.false_branch.get(), indentation + 4, reg);
+            }
             std::cout << pi(indentation) << "End of if statement\n";
         }
             break;
@@ -110,7 +114,6 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
             break;
         case ActionType::EndLogicBlock: {
             indentation-=2;
-            std::cout << "\n";
         }
             break;
         case ActionType::NumericConst: {
@@ -120,7 +123,7 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
             break;
         case ActionType::ReturnCall: {
             auto & ret_call = *static_cast<ReturnCall*>(root);
-            std::cout << pi(indentation) << "Return call of\n";
+            std::cout << pi(indentation) << "Return call\n";
             display_root(ret_call.argument.get(), indentation+2, reg);
         }
             break;
@@ -151,4 +154,5 @@ void Parser::show_ast(ASTCreationResult &ast_result, IdRegister &id_reg) {
     for (auto root: ast_result.object_roots) {
         display_root(root.get(), 0, id_reg);
     }
+    std::cout << "\n\n\n";
 }

@@ -10,12 +10,14 @@
 
 #include "Source/Compiler/Compiler/Compiler.h"
 #include "Source/VirtualMachine/VirtualMachine.h"
+#include "Source/Compiler/OptionsContainer.h"
 
 std::vector<std::string> open_files(const std::vector<std::string>& file_paths);
 static std::vector<std::string> read_arguments(int argc, char *argv[]);
 
 int main(int argc, char *argv[]) {
     //TODO
+    Options options{};
     auto arguments = read_arguments(argc, argv);
 
     auto data = open_files(std::vector<std::string>({"/home/spaceeye/CLionProjects/AnotherProgrammingLanguage/test.pspl"}));
@@ -25,7 +27,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    auto code = Compiler::compile(data, true);
+    auto code = Compiler::compile(data, options);
 
     VirtualMachine vm{};
 

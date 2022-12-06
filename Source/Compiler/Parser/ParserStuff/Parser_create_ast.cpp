@@ -16,9 +16,6 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
         auto root = std::make_shared<BaseAction>();
         auto beginning = std::shared_ptr{root};
 
-        int circle_bracket_logic = 0;
-        int box_bracket_logic = 0;
-
         std::vector<Bracket> brackets_stack;
 
         recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, to_return.reg, root, 0,
@@ -59,7 +56,6 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 std::vector<std::tuple<VariableType, bool, int>> arguments;
 
                 if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration."};}
-
                 while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
                     check_token_is_valid_argument(tokens[i], i);
 
@@ -100,27 +96,16 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 }
                 break;
             case Token::IF: {
-                //var type, is_reference, var id
                 std::vector<std::shared_ptr<BaseAction>> arguments;
+                get_arguments(end_num, tokens, logic_indentation, function_declaration, to_return, reg, i,
+                              brackets_stack, arguments, "if statement.");
 
-                if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid if statement."};}
-
-                brackets_stack.emplace_back(Bracket::Circle);
-
-                if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {throw std::logic_error("Emtpy if statement");}
-                while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
-                    auto arg_root = std::make_shared<BaseAction>();
-                    auto in_root = arg_root;
-                    recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
-                    arguments.emplace_back(arg_root->next_action);
-                }
-
+                if (arguments.empty()) {throw std::logic_error("No arguments in an if statement.");}
                 if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement.");}
 
                 auto true_branch = std::make_shared<BaseAction>(BaseAction{});
                 {
-                    if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Incorrect if statement declaration.");}
+                    if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid if statement declaration.");}
                     auto in_root = true_branch;
                     recursive_create_ast(tokens, logic_indentation, function_declaration,
                                          to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
@@ -131,7 +116,7 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                         auto in_root = false_branch;
                         recursive_create_ast(tokens, logic_indentation, function_declaration,
                                              to_return, reg, in_root, 0, end_num, i, brackets_stack, if_statement_nesting+1);
-                    } else {throw std::logic_error("Incorrect if statement declaration.");}
+                    } else {throw std::logic_error("Invalid if statement declaration.");}
                 }
 
                 auto if_action = std::make_shared<IfStatement>(IfStatement{BaseAction{ActionType::IfStatement},
@@ -146,27 +131,16 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
             }
                 break;
             case Token::WHILE: {
-                //var type, is_reference, var id
                 std::vector<std::shared_ptr<BaseAction>> arguments;
+                get_arguments(end_num, tokens, logic_indentation, function_declaration, to_return, reg, i,
+                              brackets_stack, arguments, "while statement.");
 
-                if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid while statement."};}
-
-                brackets_stack.emplace_back(Bracket::Circle);
-
-                if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {throw std::logic_error("Emtpy while statement");}
-                while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
-                    auto arg_root = std::make_shared<BaseAction>();
-                    auto in_root = arg_root;
-                    recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
-                    arguments.emplace_back(arg_root->next_action);
-                }
-
+                if (arguments.empty()) {throw std::logic_error("No arguments in a while statement.");}
                 if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement.");}
 
                 auto body = std::make_shared<BaseAction>(BaseAction{});
 
-                if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Incorrect while declaration.");}
+                if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid while declaration.");}
                 auto in_root = body;
                 recursive_create_ast(tokens, logic_indentation, function_declaration,
                                      to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
@@ -245,21 +219,9 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                     if (reg.is_builtin_fn(id)) {
                         auto bfn = reg.get_builtin(id);
 
-                        //var type, is_reference, var id
                         std::vector<std::shared_ptr<BaseAction>> arguments;
-
-                        if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
-
-                        brackets_stack.emplace_back(Bracket::Circle);
-
-                        if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
-                        while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
-                            auto arg_root = std::make_shared<BaseAction>();
-                            auto in_root = arg_root;
-                            recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
-                            arguments.emplace_back(arg_root->next_action);
-                        }
+                        get_arguments(end_num, tokens, logic_indentation, function_declaration, to_return, reg, i,
+                                      brackets_stack, arguments, "function call.");
 
                         if (std::get<0>(bfn.second) != "return") {
                             auto new_root = std::make_shared<FunctionCallAction>(FunctionCallAction{
@@ -366,6 +328,23 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
         } else if (brackets_stack.back() == Bracket::Box)    {throw std::logic_error("Unclosed box brackets.");
         } else if (brackets_stack.back() == Bracket::Fancy)  {throw std::logic_error("Unclosed scope.");
         }
+    }
+}
+
+void Parser::get_arguments(int end_num, const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
+                      ASTCreationResult &to_return, IdRegister &reg, int &i, std::vector<Bracket> &brackets_stack,
+                      std::vector<std::shared_ptr<BaseAction>> &arguments, std::string name) {
+    if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid "+name};}
+
+    brackets_stack.emplace_back(Bracket::Circle);
+
+    if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
+    while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
+        auto arg_root = std::make_shared<BaseAction>();
+        auto in_root = arg_root;
+        recursive_create_ast(tokens, logic_indentation, function_declaration,
+                             to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+        arguments.emplace_back(arg_root->next_action);
     }
 }
 

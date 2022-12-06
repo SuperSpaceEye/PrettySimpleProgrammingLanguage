@@ -11,6 +11,7 @@
 #include "ByteCode.h"
 #include "../Transpiler/Transpiler.h"
 #include "../Parser/Parser.h"
+#include "../OptionsContainer.h"
 
 struct StackScope {
     //byte_len, id, type
@@ -110,12 +111,12 @@ class Compiler {
     generate_code_to_return_var_from_builtin(StackScope &scope, int needed_byte_len, std::vector<ByteCode> &bcode,
                                              bool &popped);
 
-    static std::vector<ByteCode> construct_program(std::vector<FunctionPart> & parts);
-    static void batch_pop_push(FunctionPart & part);
+    static std::vector<ByteCode> compile_to_bytecode(std::vector<FunctionPart> &parts, const Options &options);
+    static void batch_byte_words(FunctionPart & part);
     static void link_code_parts(std::vector<FunctionPart> &parts);
     static std::vector<ByteCode> concat_code(std::vector<FunctionPart> &parts);
 public:
-    static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, bool debug);
+    static std::vector<ByteCode> compile(const std::vector<std::string> &str_data, const Options &options);
 
     static void
     prepare_return_from_user_fn(std::vector<ByteCode> &main_part, StackScope &local_scope, int needed_byte_len,

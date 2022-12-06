@@ -6,7 +6,7 @@
 
 bool check_for_main(ASTCreationResult & ast_result);
 
-void Parser::validate_ast(ASTCreationResult &ast_result, bool debug) {
+void Parser::validate_ast(ASTCreationResult &ast_result) {
     if (!check_for_main(ast_result)) {throw std::logic_error("No void main() function");}
 
     ValidateScope scope;
@@ -28,12 +28,11 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
         switch (root->act_type) {
             case ActionType::VariableDeclaration: {
                 auto & var_decl = *static_cast<VariableDeclaration*>(root.get());
-                if (scope.check_id_in_lscope(var_decl.var_id)) {throw std::logic_error("Cannot redeclare a variable in same scope");}
+                if (scope.check_id_in_lscope(var_decl.var_id)) {throw std::logic_error("Can't redeclare a variable in the same scope");}
                 switch (var_decl.var_type) {
                     case VariableType::VOID:
                     case VariableType::B_ANY:
                         throw std::logic_error("Can't declare variable with type void");
-                        break;
                     case VariableType::INT:
                     case VariableType::UINT:
                     case VariableType::FLOAT:
@@ -167,20 +166,11 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
 
                         recursive_validate(scope, while_act.expression, ids, last_id, prev_root);
 
-                        //TODO add checks for numeric types
                         if (var_call.type != VariableType::UINT) {
-                            auto to_uint = std::make_shared<FunctionCallAction>(FunctionCallAction{
-                                BaseAction{ActionType::FunctionCall},
-                                FunctionType::BuiltinFunction,
-                                (int)BuiltinIDS::TO_UINT,
-                                0,
-                                VariableType::UINT,
-                                {while_act.expression},
-                                {VariableType::B_ANY}
-                            });
-
-                            while_act.expression = to_uint;
-                        }
+                            make_implicit_cast(while_act.expression,
+                                               BuiltinIDS::TO_UINT,
+                                               var_call.type,
+                                               VariableType::UINT);}
                     }
                         break;
                     case ActionType::FunctionCall: {
@@ -188,20 +178,11 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
 
                         auto in = while_act.expression;
                         recursive_validate(scope, in, ids, last_id, prev_root);
-
                         if (fn_call.return_type != VariableType::UINT) {
-                            auto to_uint = std::make_shared<FunctionCallAction>(FunctionCallAction{
-                                    BaseAction{ActionType::FunctionCall},
-                                    FunctionType::BuiltinFunction,
-                                    (int)BuiltinIDS::TO_UINT,
-                                    0,
-                                    VariableType::UINT,
-                                    {while_act.expression},
-                                    {VariableType::B_ANY}
-                            });
-
-                            while_act.expression = to_uint;
-                        }
+                            make_implicit_cast(while_act.expression,
+                                               BuiltinIDS::TO_UINT,
+                                               fn_call.return_type,
+                                               VariableType::UINT);}
                     }
                         break;
                     case ActionType::NumericConst: {
@@ -236,7 +217,11 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
 
                         auto & var_call = *static_cast<VariableCall*>(if_call.expression.get());
 
-                        if (var_call.type != VariableType::UINT) {throw std::logic_error("Type of expression in if statement must be uint.");}
+                        if (var_call.type != VariableType::UINT) {
+                            make_implicit_cast(if_call.expression,
+                                               BuiltinIDS::TO_UINT,
+                                               var_call.type,
+                                               VariableType::UINT);}
                     }
                         break;
                     case ActionType::FunctionCall: {
@@ -244,7 +229,11 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
 
                         auto expr = if_call.expression;
                         recursive_validate(scope, expr, ids, last_id, prev_root);
-                        if (fn_call.return_type != VariableType::UINT) { throw std::logic_error("Return type of a function in an if statement expression must be uint.");}
+                        if (fn_call.return_type != VariableType::UINT) {
+                            make_implicit_cast(if_call.expression,
+                                               BuiltinIDS::TO_UINT,
+                                               fn_call.return_type,
+                                               VariableType::UINT);}
                     }
                         break;
                     default: {throw std::logic_error("Incorrect if statement expression");}
@@ -318,6 +307,29 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
         prev_root = root;
         root = root->next_action;
     }
+}
+
+void Parser::make_implicit_cast(std::shared_ptr<BaseAction> &target, BuiltinIDS function_id, VariableType original_type,
+                                VariableType target_type) {
+    switch (original_type) {
+        case VariableType::INT:
+        case VariableType::UINT:
+        case VariableType::FLOAT:
+            break;
+        default:
+            throw std::logic_error("Can't implicitly convert type.");
+    }
+
+    target = std::make_shared<FunctionCallAction>(
+            FunctionCallAction{
+        BaseAction{ActionType::FunctionCall},
+        FunctionType::BuiltinFunction,
+        (int)function_id,
+        0,
+        target_type,
+        {target},
+        {VariableType::B_ANY}
+    });
 }
 
 bool check_for_main(ASTCreationResult & ast_result) {
