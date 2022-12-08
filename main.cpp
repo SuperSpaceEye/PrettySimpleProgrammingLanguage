@@ -27,7 +27,13 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    auto code = Compiler::compile(data, options);
+    std::vector<ByteCode> code;
+    try {
+        code = Compiler::compile(data, options);
+    } catch (const std::exception & e) {
+        std::cout << "Compiler has failed to compile the code. The exception:\n" << e.what();
+        return 0;
+    }
 
     VirtualMachine vm{};
 

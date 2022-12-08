@@ -35,7 +35,7 @@ fn int test1(int n) {
     return(n);
 }
 
-fn int test5(int a) {
+fn void test5(int a) {
     var int b;
     var int c;
     var int d;
@@ -54,7 +54,7 @@ fn int test5(int a) {
         } else {print_num(4);}
     }
 
-    return(5);
+    return(50);
 }
 
 fn int test2(int n) {

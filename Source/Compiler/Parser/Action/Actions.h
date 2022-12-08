@@ -12,6 +12,7 @@
 struct BaseAction {
     ActionType act_type;
     std::shared_ptr<BaseAction> next_action = nullptr;
+    std::pair<int, int> pos;
 };
 
 //access through dynamic cast

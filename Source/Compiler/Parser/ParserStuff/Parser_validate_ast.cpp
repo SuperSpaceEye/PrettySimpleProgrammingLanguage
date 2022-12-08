@@ -28,11 +28,15 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
         switch (root->act_type) {
             case ActionType::VariableDeclaration: {
                 auto & var_decl = *static_cast<VariableDeclaration*>(root.get());
-                if (scope.check_id_in_lscope(var_decl.var_id)) {throw std::logic_error("Can't redeclare a variable in the same scope");}
+                if (scope.check_id_in_lscope(var_decl.var_id)) {throw std::logic_error("Can't redeclare a variable in the same scope. "
+                                                                                       "Row " + std::to_string(var_decl.pos.first) +
+                                                                                       " col " + std::to_string(var_decl.pos.second));}
                 switch (var_decl.var_type) {
                     case VariableType::VOID:
                     case VariableType::B_ANY:
-                        throw std::logic_error("Can't declare variable with type void");
+                        throw std::logic_error("Can't declare variable with type void. "
+                                               "Row " + std::to_string(var_decl.pos.first) +
+                                               " col " + std::to_string(var_decl.pos.second));
                     case VariableType::INT:
                     case VariableType::UINT:
                     case VariableType::FLOAT:
@@ -45,7 +49,10 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                 break;
             case ActionType::VariableCall: {
                 auto & var_call = *static_cast<VariableCall*>(root.get());
-                if (!scope.check_id(var_call.var_id)) {throw std::logic_error("Variable was not declared in this scope.");}
+                if (!scope.check_id(var_call.var_id)) {throw std::logic_error("Variable was not declared in this scope. "
+                                                                              "Row " + std::to_string(var_call.pos.first) +
+                                                                              " col " + std::to_string(var_call.pos.second));
+                    }
                 var_call.type = scope.get_var_type(var_call.var_id);
             }
                 break;
@@ -56,7 +63,10 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                 int num_actual_args = fn_call.arguments.size();
 
                 if (num_needed_args != num_actual_args) {
-                    throw std::logic_error("Num required arguments does not equal num given arguments");
+                    throw std::logic_error("Number of required arguments {"+std::to_string(num_needed_args)+"} does not "
+                                            "equal the number of given arguments {"+std::to_string(num_actual_args)+"}. "
+                                           "Row " + std::to_string(fn_call.pos.first) +
+                                           " col " + std::to_string(fn_call.pos.second));
                 }
 
                 auto set_type = VariableType::VOID;
@@ -79,20 +89,27 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                                     set_type = var_call.type;
                                     if (fn_call.return_type == VariableType::B_ANY) { fn_call.return_type = set_type; }
                                 }
+                                //TODO remove? and rework VM's builtin if don't remove.
                                 if (var_call.type != set_type) {
-                                    throw std::logic_error("Types in arguments in B_ANY do not match");
+                                    throw std::logic_error("Types of values given to B_ANY should match. "
+                                                           "Row " + std::to_string(var_call.pos.first) +
+                                                           " col " + std::to_string(var_call.pos.second));
                                 }
                             }
 
                             if (!(req_type == VariableType::B_ANY || scope.get_var_type(var_call.var_id) == req_type)) {
-                                throw std::logic_error("Type of function argument doesn't match required type");
+                                throw std::logic_error("Type of function argument doesn't match required type. "
+                                                       "Row " + std::to_string(var_call.pos.first) +
+                                                       " col " + std::to_string(var_call.pos.second));
                             }
                         }
                             break;
                         case ActionType::FunctionCall: {
                             auto & afn_call = *static_cast<FunctionCallAction*>(arg.get());
 
-                            if (is_ref) {throw std::logic_error("Function argument requires reference to variable.");}
+                            if (is_ref) {throw std::logic_error("Function argument requires reference to variable. "
+                                                                "Row " + std::to_string(afn_call.pos.first) +
+                                                                " col " + std::to_string(afn_call.pos.second));}
 
                             recursive_validate(scope, arg, ids, last_id, prev_root);
 
@@ -102,19 +119,25 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                                     if (fn_call.return_type == VariableType::B_ANY) { fn_call.return_type = set_type; }
                                 }
                                 if (afn_call.return_type != set_type) {
-                                    throw std::logic_error("Types in arguments in B_ANY do not match");
+                                    throw std::logic_error("Types in arguments in B_ANY do not match. "
+                                                           "Row " + std::to_string(fn_call.pos.first) +
+                                                           " col " + std::to_string(fn_call.pos.second));
                                 }
                             }
 
                             if (!(req_type == VariableType::B_ANY || req_type == afn_call.return_type)) {
-                                throw std::logic_error("Type of function argument doesn't match required type");
+                                throw std::logic_error("Type of function argument doesn't match required type. "
+                                                       "Row " + std::to_string(afn_call.pos.first) +
+                                                       " col " + std::to_string(afn_call.pos.second));
                             }
                         }
                             break;
                         case ActionType::NumericConst: {
                             auto & num_arg = *static_cast<NumericConst*>(arg.get());
 
-                            if (is_ref) {throw std::logic_error("Function argument requires reference to variable.");}
+                            if (is_ref) {throw std::logic_error("Function argument requires reference to variable. "
+                                                                "Row " + std::to_string(num_arg.pos.first) +
+                                                                " col " + std::to_string(num_arg.pos.second));}
 
                             if (req_type == VariableType::B_ANY) {
                                 if (set_type == VariableType::VOID) {
@@ -122,11 +145,17 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                                     if (fn_call.return_type == VariableType::B_ANY) { fn_call.return_type = set_type; }
                                 }
                                 if (num_arg.type != set_type) {
-                                    throw std::logic_error("Types in arguments in B_ANY do not match");
+                                    throw std::logic_error("Types in arguments in B_ANY do not match. "
+                                                           "Row " + std::to_string(num_arg.pos.first) +
+                                                           " col " + std::to_string(num_arg.pos.second));
                                 }
                             }
 
-                            if (!(req_type == VariableType::B_ANY || req_type == num_arg.type)) {throw std::logic_error("Type of numeric const does not match type of required argument.");}
+                            if (!(req_type == VariableType::B_ANY || req_type == num_arg.type)) {
+                                throw std::logic_error("Type of numeric const does not match type of required argument. "
+                                                       "Row " + std::to_string(num_arg.pos.first) +
+                                                       " col " + std::to_string(num_arg.pos.second));
+                            }
                         }
                             break;
                         case ActionType::StringConst: {
@@ -134,7 +163,9 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                         }
                             break;
                         default:
-                            throw std::logic_error("Invalid function argument");
+                            throw std::logic_error("Invalid function argument. "
+                                                   "Row " + std::to_string(arg->pos.first) +
+                                                   " col " + std::to_string(arg->pos.second));
                     }
                 }
             }
@@ -197,7 +228,9 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                     }
                         break;
                     default:
-                        throw std::logic_error("Wrong statement in while loop expression.");
+                        throw std::logic_error("Wrong statement in while loop expression. "
+                                               "Row " + std::to_string(while_act.pos.first) +
+                                               " col " + std::to_string(while_act.pos.second));
                 }
 
                 auto body = while_act.body;
@@ -236,7 +269,9 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                                                VariableType::UINT);}
                     }
                         break;
-                    default: {throw std::logic_error("Incorrect if statement expression");}
+                    default: {throw std::logic_error("Incorrect if statement expression. "
+                                                     "Row " + std::to_string(if_call.pos.first) +
+                                                     " col " + std::to_string(if_call.pos.second));}
                 }
                 auto & if_true = if_call.true_branch;
                 auto & if_false = if_call.false_branch;
@@ -270,14 +305,21 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
 
                 auto & arg = ret_call.argument;
                 if (return_type == VariableType::VOID) {
-                    if (arg != nullptr) {throw std::logic_error("Return from void function.");}
+                    if (arg != nullptr) {throw std::logic_error("Non-empty return from void function. "
+                                                                "Row " + std::to_string(ret_call.pos.first) +
+                                                                " col " + std::to_string(ret_call.pos.second));}
                 } else {
-                    if (arg == nullptr) {throw std::logic_error("Empty return from non-void function.");}
+                    if (arg == nullptr) {throw std::logic_error("Empty return from non-void function. "
+                                                                "Row " + std::to_string(ret_call.pos.first) +
+                                                                " col " + std::to_string(ret_call.pos.second));}
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {
                             auto & var = *static_cast<VariableCall*>(arg.get());
 
-                            if (!(return_type == VariableType::B_ANY || scope.get_var_type(var.var_id) == return_type)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || scope.get_var_type(var.var_id) == return_type)) {
+                                throw std::logic_error("Invalid return type. "
+                                                       "Row " + std::to_string(var.pos.first) +
+                                                       " col " + std::to_string(var.pos.second));}
                         }
                             break;
                         case ActionType::FunctionCall: {
@@ -286,27 +328,36 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                             auto in_arg = arg;
                             recursive_validate(scope, in_arg, ids, last_id, prev_root);
 
-                            if (!(return_type == VariableType::B_ANY || fn_call.return_type == return_type)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || fn_call.return_type == return_type)) {
+                                throw std::logic_error("Invalid return type. "
+                                                       "Row " + std::to_string(fn_call.pos.first) +
+                                                       " col " + std::to_string(fn_call.pos.second));}
                         }
                             break;
                         case ActionType::NumericConst: {
                             auto & num_const = *static_cast<NumericConst*>(arg.get());
-                            if (!(return_type == VariableType::B_ANY || num_const.type == return_type)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || num_const.type == return_type)) {
+                                throw std::logic_error("Invalid return type. "
+                                                       "Row " + std::to_string(num_const.pos.first) +
+                                                       " col " + std::to_string(num_const.pos.second));}
                         }
                             break;
                         case ActionType::StringConst: {
-                            if (!(return_type == VariableType::B_ANY || return_type == VariableType::STRING)) {throw std::logic_error("Invalid return type.");}
+                            if (!(return_type == VariableType::B_ANY || return_type == VariableType::STRING)) {
+                                throw std::logic_error("Invalid return type.");}
                         }
                             break;
                         default:
-                            throw std::logic_error("Invalid return argument");
+                            throw std::logic_error("Invalid return argument. "
+                                                   "Row " + std::to_string(arg->pos.first) +
+                                                   " col " + std::to_string(arg->pos.second));
                     }
                 }
             }
                 break;
         }
         if (root == nullptr) {
-            throw std::logic_error("Something gone wrong.");
+            throw std::logic_error("Something gone wrong. Parser validate stage. Root has become nullptr. If you see this, open an issue on the github or message me, SpaceEye.");
         }
 
         prev_root = root;

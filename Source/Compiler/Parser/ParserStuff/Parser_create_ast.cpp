@@ -42,6 +42,8 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
             case Token::FUNCTION: {
                 function_declaration = true;
 
+                auto fn_decl_pos = tokens[i].second;
+
                 bool is_inline = false;
                 if (tokens[++i].first == Token::INLINE) {is_inline = true;} else {--i;}
 
@@ -51,12 +53,16 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
 
                 int id = get_id(tokens, ++i);
 
-                if (reg.check_exists(id)) { throw std::logic_error("Id already exists");}
+                if (reg.check_exists(id)) { throw std::logic_error("Id already exists. "
+                                                                   "Row " + std::to_string(tokens[i].second.first) +
+                                                                   " col " + std::to_string(tokens[i].second.first));}
 
                 //var type, is_reference, var id
                 std::vector<std::tuple<VariableType, bool, int>> arguments;
 
-                if (tokens[++i].first != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration."};}
+                if (tokens[++i].first != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration. "
+                                                                                             "Row " + std::to_string(tokens[i].second.first) +
+                                                                                             " col " + std::to_string(tokens[i].second.second)};}
                 while (tokens[++i].first != Token::RIGHT_CIRCLE_BRACKET) {
                     check_token_is_valid_argument(tokens[i], i);
 
@@ -70,15 +76,19 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
                 }
 
 
-                auto temp_root = std::make_shared<FunctionDeclaration>(FunctionDeclaration{BaseAction{ActionType::FunctionDeclaration, root},
-                                                                                 id, is_inline, return_type, arguments});
+                auto temp_root = std::make_shared<FunctionDeclaration>(FunctionDeclaration{
+                    BaseAction{ActionType::FunctionDeclaration, nullptr, fn_decl_pos},
+                    id, is_inline, return_type, arguments});
                 reg.register_function(id, temp_root.get());
                 root->next_action = temp_root;
                 root = temp_root;
             }
                 break;
-            case Token::VAR:
-                if (logic_indentation == 0) {throw std::logic_error{"Can't declare global variable."};}
+            case Token::VAR: {
+                auto var_pos = token.second;
+                if (logic_indentation == 0) {throw std::logic_error{"Can't declare global variable. "
+                                                                    "Row " + std::to_string(token.second.first) +
+                                                                    " col " + std::to_string(token.second.second)};}
                 if (tokens[++i].first == Token::ARRAY) {
 
                 } else {
@@ -90,23 +100,33 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
                     auto var_id = get_id(tokens, i);
                     reg.register_variable(var_id);
 
-                    temp_root = std::make_shared<VariableDeclaration>(VariableDeclaration{BaseAction{ActionType::VariableDeclaration},
-                                                                                          var_type, var_id, is_ref});
+                    temp_root = std::make_shared<VariableDeclaration>(VariableDeclaration{
+                        BaseAction{ActionType::VariableDeclaration, nullptr, var_pos},
+                        var_type, var_id, is_ref});
                     root->next_action = temp_root;
                     root = temp_root;
                 }
+            }
                 break;
             case Token::IF: {
+                auto if_statement_pos = token.second;
+
                 std::vector<std::shared_ptr<BaseAction>> arguments;
                 get_arguments(end_num, tokens, logic_indentation, function_declaration, to_return, reg, i,
                               brackets_stack, arguments, "if statement.");
 
-                if (arguments.empty()) {throw std::logic_error("No arguments in an if statement.");}
-                if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement.");}
+                if (arguments.empty()) {throw std::logic_error("No arguments in an if statement. "
+                                                               "Row " + std::to_string(if_statement_pos.first) +
+                                                               " col " + std::to_string(if_statement_pos.second));}
+                if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement. "
+                                                                   "Row " + std::to_string(if_statement_pos.first) +
+                                                                   " col " + std::to_string(if_statement_pos.second));}
 
                 auto true_branch = std::make_shared<BaseAction>(BaseAction{});
                 {
-                    if (tokens[++i].first != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid if statement declaration.");}
+                    if (tokens[++i].first != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid if statement declaration. "
+                                                                                               "Row " + std::to_string(tokens[i].second.first) +
+                                                                                               " col " + std::to_string(tokens[i].second.second));}
                     auto in_root = true_branch;
                     recursive_create_ast(tokens, logic_indentation, function_declaration,
                                          to_return, reg, in_root, 0, end_num, i, brackets_stack, 0,
@@ -120,41 +140,45 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
                         recursive_create_ast(tokens, logic_indentation, function_declaration,
                                              to_return, reg, in_root, 0, end_num, i, brackets_stack,
                                              if_statement_nesting + 1, do_not_recurse+1);
-                    } else {throw std::logic_error("Invalid if statement declaration.");}
+                    } else {throw std::logic_error("Invalid if statement declaration. "
+                                                   "Row " + std::to_string(tokens[i].second.first) +
+                                                   " col " + std::to_string(tokens[i].second.second));}
                 }
 
-                auto if_action = std::make_shared<IfStatement>(IfStatement{BaseAction{ActionType::IfStatement},
-                                                               arguments[0],
-                                                               true_branch->next_action,
-                                                               false_branch->next_action});
+                auto if_action = std::make_shared<IfStatement>(IfStatement{
+                    BaseAction{ActionType::IfStatement, nullptr, if_statement_pos},
+                    arguments[0], true_branch->next_action, false_branch->next_action});
 
                 root->next_action = if_action;
                 root = if_action;
 
                 if (if_statement_nesting) { return;}
-
-//                if (!do_not_recurse) {
-//                    i--;
-//                }
             }
                 break;
             case Token::WHILE: {
+                auto while_st_pos = token.second;
                 std::vector<std::shared_ptr<BaseAction>> arguments;
                 get_arguments(end_num, tokens, logic_indentation, function_declaration, to_return, reg, i,
                               brackets_stack, arguments, "while statement.");
 
-                if (arguments.empty()) {throw std::logic_error("No arguments in a while statement.");}
-                if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement.");}
+                if (arguments.empty()) {throw std::logic_error("No arguments in a while statement."
+                                                               "Row " + std::to_string(while_st_pos.first) +
+                                                               " col " + std::to_string(while_st_pos.second));}
+                if (arguments.size() != 1) {throw std::logic_error("More than one argument in a while statement."
+                                                                   "Row " + std::to_string(while_st_pos.first) +
+                                                                   " col " + std::to_string(while_st_pos.second));}
 
                 auto body = std::make_shared<BaseAction>(BaseAction{});
 
-                if (tokens[++i].first!= Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid while declaration.");}
+                if (tokens[++i].first!= Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid while declaration."
+                                                                                          "Row " + std::to_string(tokens[i].second.first) +
+                                                                                          " col " + std::to_string(tokens[i].second.second));}
                 auto in_root = body;
                 recursive_create_ast(tokens, logic_indentation, function_declaration,
                                      to_return, reg, in_root, 0, end_num, i, brackets_stack, 0, do_not_recurse+1);
 
                 auto while_action = std::make_shared<WhileLoop>(WhileLoop{
-                    BaseAction{ActionType::WhileLoop},
+                    BaseAction{ActionType::WhileLoop, nullptr, while_st_pos},
                     arguments[0],
                     body->next_action
                 });
@@ -238,18 +262,14 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
 
                         if (std::get<0>(bfn.second) != "return") {
                             auto new_root = std::make_shared<FunctionCallAction>(FunctionCallAction{
-                                                                           BaseAction{ActionType::FunctionCall},
-                                                                           FunctionType::BuiltinFunction,
-                                                                           bfn.first,
-                                                                           id,
-                                                                           std::get<1>(bfn.second),
-                                                                           arguments});
+                                BaseAction{ActionType::FunctionCall, nullptr, token.second},
+                                FunctionType::BuiltinFunction, bfn.first, id, std::get<1>(bfn.second), arguments});
                             root->next_action = new_root;
                             root = new_root;
                         } else {
                             if (arguments.size() == 0) {arguments.emplace_back(nullptr);}
                             auto new_root = std::make_shared<ReturnCall>(ReturnCall{
-                                    BaseAction{ActionType::ReturnCall},
+                                    BaseAction{ActionType::ReturnCall, nullptr, token.second},
                                     std::shared_ptr<BaseAction>(arguments[0])});
                             root->next_action = new_root;
                             root = new_root;
@@ -260,7 +280,9 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
                         //var type, is_reference, var id
                         std::vector<std::shared_ptr<BaseAction>> arguments;
 
-                        if (tokens[++i].first!= Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
+                        if (tokens[++i].first!= Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call. "
+                                                                                                    "Row " + std::to_string(tokens[i].second.first) +
+                                                                                                    " col " + std::to_string(tokens[i].second.second)};}
 
                         brackets_stack.emplace_back(Bracket::Circle);
                         if (tokens[i+1].first == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
@@ -274,10 +296,8 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
                         }
 
                         auto new_root = std::make_shared<FunctionCallAction>(FunctionCallAction{
-                                BaseAction{ActionType::FunctionCall},
-                                FunctionType::UserFunction,
-                                id, id, ufn->return_type,
-                                arguments});
+                                BaseAction{ActionType::FunctionCall, nullptr, token.second},
+                                FunctionType::UserFunction, id, id, ufn->return_type, arguments});
                         root->next_action = new_root;
                         root = new_root;
                     }
@@ -285,8 +305,8 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
                 }
 
                 if (reg.check_variable(id)) {
-                    auto temp_root = std::make_shared<VariableCall>(VariableCall{BaseAction{ActionType::VariableCall},
-                                                                                 id});
+                    auto temp_root = std::make_shared<VariableCall>(VariableCall{
+                        BaseAction{ActionType::VariableCall, nullptr, token.second}, id});
                     root->next_action = temp_root;
                     root = temp_root;
                     continue;
@@ -301,8 +321,9 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
             case Token::NUMBER: {
                 auto type = convert_token_type(tokens[++i]);
                 auto value = tokens[++i];
-                temp_root = std::make_shared<NumericConst>(NumericConst{BaseAction{ActionType::NumericConst},
-                                                                       type, *(uint32_t*)&value});
+                temp_root = std::make_shared<NumericConst>(NumericConst{
+                    BaseAction{ActionType::NumericConst, nullptr, token.second},
+                    type, *(uint32_t*)&value});
                 root->next_action = temp_root;
                 root = temp_root;
             }
@@ -310,13 +331,21 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
 
             case Token::STR_BRACKET: {
                 std::vector<char> data;
-                while (tokens[++i].first != Token::STR_BRACKET) {
+                bool ended = false;
+                while (i < tokens.size()) {
+                    if (tokens[++i].first == Token::STR_BRACKET) {
+                        ended = true;break;
+                    }
+
+                    if (!ended) {throw std::logic_error("String bracket isn't closed. "
+                                                        "Row " + std::to_string(token.second.first) +
+                                                        " col " + std::to_string(token.second.second));}
                     data.emplace_back((char)((int)tokens[i].first-num_tokens));
                 }
                 i++;
 
-                temp_root = std::make_shared<StringConst>(StringConst{BaseAction{ActionType::StringConst},
-                                                                      data});
+                temp_root = std::make_shared<StringConst>(StringConst{
+                    BaseAction{ActionType::StringConst, nullptr, token.second}, data});
                 root->next_action = temp_root;
                 root = temp_root;
             }
@@ -367,6 +396,7 @@ void Parser::get_arguments(int end_num, const std::vector<std::pair<Token, std::
         recursive_create_ast(tokens, logic_indentation, function_declaration,
                              to_return, reg, in_root, 0, end_num, i, brackets_stack, 0, 0);
         arg_root = arg_root->next_action;
+
         switch (arg_root->act_type) {
             case ActionType::VariableCall:
             case ActionType::FunctionCall:

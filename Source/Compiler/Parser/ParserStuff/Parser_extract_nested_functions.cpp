@@ -73,5 +73,5 @@ int Parser::get_main_fn_idx(TreeResult &t_res, int main_id) {
             }
         }
     }
-    throw std::logic_error("Shouldn't happen.");
+    throw std::logic_error("Shouldn't happen. Extract nested function stage. get_main_fn_idx. If you see this, open an issue on the github or message me, SpaceEye.");
 }

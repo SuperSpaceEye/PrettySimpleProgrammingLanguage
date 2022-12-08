@@ -33,9 +33,9 @@ void display_variable(BaseAction *root, int indentation, IdRegister &reg) {
 
 std::string num_to_str(NumericConst & var) {
     switch (var.type) {
-        case VariableType::INT:   return std::to_string((int32_t)var.value);
+        case VariableType::INT:   return std::to_string(*(int32_t*)&var.value);
         case VariableType::UINT:  return std::to_string(var.value);
-        case VariableType::FLOAT: return std::to_string((float)var.value);
+        case VariableType::FLOAT: return std::to_string(*(float*)&var.value);
     }
 }
 

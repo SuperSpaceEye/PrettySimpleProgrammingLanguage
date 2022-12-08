@@ -37,7 +37,7 @@ struct StackScope {
                 if (std::get<1>(item) == id) {return {item, i};}
             }
         }
-        throw std::logic_error("Shouldn't happen.");
+        throw std::logic_error("Shouldn't happen. Bytecode compilation stage. StackScope get_var. If you see this, open an issue on the github or message me, SpaceEye.");
     }
     std::tuple<uint32_t, uint32_t, VariableType> get_min_pos_var_of_scope() {
         return scope.back()[0];
@@ -72,7 +72,7 @@ struct StackScope {
             }
         }
 
-        throw std::logic_error("Shouldn't happen.");
+        throw std::logic_error("Shouldn't happen. Bytecode compilation stage. get_pos. If you see this, open an issue on the github or message me, SpaceEye.");
     }
 
     StackScope()=default;

@@ -191,7 +191,7 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
             }
                 break;
             default:
-                throw std::logic_error("Unknown word. This is probably a bug in the compiler. Terminating.");
+                throw std::logic_error("VM met an unknown word. This is probably a bug in the compiler. If you see this, open an issue on the github or message me, SpaceEye.");
         }
 
         //DO NOT DELETE. MAKES VM SLOWER FOR SOME REASON. LAST CHECKED 03.12.2022
@@ -316,6 +316,8 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
             }
         }
             break;
+        default:
+            throw std::logic_error("VM has met an unknown builtin fn id. If you see this, open an issue on the github or message me, SpaceEye.");
     }
 }
 
