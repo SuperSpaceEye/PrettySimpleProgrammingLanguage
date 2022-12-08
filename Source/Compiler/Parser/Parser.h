@@ -152,9 +152,9 @@ class Parser {
     static bool var_type_is_numeric(VariableType type);
 
     static void recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation,
-                         bool &function_declaration, ASTCreationResult &to_return, IdRegister &reg,
-                         std::shared_ptr<BaseAction> &root, int begin_num, int end_num, int &i,
-                         std::vector<Bracket> &brackets_stack, int if_statement_nesting, int do_not_recurse);
+                                     bool &function_declaration, ASTCreationResult &to_return, IdRegister &reg,
+                                     std::shared_ptr<BaseAction> &node, int begin_num, int end_num, int &i,
+                                     std::vector<Bracket> &brackets_stack, int if_statement_nesting, int do_not_recurse);
 
     static void check_token_is_valid_argument(const std::pair<Token, std::pair<int, int>> &token, int &i);
 
@@ -174,15 +174,60 @@ class Parser {
 
     static int get_main_fn_idx(TreeResult &t_res, int main_id);
 
+    //parser's create ast fn's
+    static void create_fn_decl_node(IdRegister &reg, const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                    bool &function_declaration, std::shared_ptr<BaseAction> &root, int &i);
+    static void create_var_decl_node(const int &logic_indentation, IdRegister &reg,
+                                     const std::pair<Token, std::pair<int, int>> &token,
+                                     const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                     std::shared_ptr<BaseAction> &node, int &i, std::shared_ptr<BaseAction> &temp_root);
+    static void create_if_statement_node(int end_num, int if_statement_nesting, int do_not_recurse,
+                                         const std::pair<Token, std::pair<int, int>> &token,
+                                         const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                         int &logic_indentation, bool &function_declaration,
+                                         ASTCreationResult &to_return,
+                                         IdRegister &reg, std::shared_ptr<BaseAction> &node, int &i,
+                                         std::vector<Bracket> &brackets_stack);
+    static void create_while_node(int end_num, int do_not_recurse, const std::pair<Token, std::pair<int, int>> &token,
+                                  const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                  int &logic_indentation,
+                                  bool &function_declaration, ASTCreationResult &to_return, IdRegister &reg,
+                                  std::shared_ptr<BaseAction> &node, int &i, std::vector<Bracket> &brackets_stack);
+    static void create_num_const_node(const std::pair<Token, std::pair<int, int>> &token,
+                                      const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                      std::shared_ptr<BaseAction> &node, int &i, std::shared_ptr<BaseAction> &temp_root);
+    static void create_str_const_node(const std::pair<Token, std::pair<int, int>> &token,
+                                      const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                      std::shared_ptr<BaseAction> &node, int &i,
+                                      std::shared_ptr<BaseAction> &temp_root);
+    static void create_builtin_fn_call_node(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int end_num,
+                                            const std::pair<Token, std::pair<int, int>> &token, int id,
+                                            int &logic_indentation, bool &function_declaration,
+                                            ASTCreationResult &to_return, IdRegister &reg,
+                                            std::shared_ptr<BaseAction> &node, int &i,
+                                            std::vector<Bracket> &brackets_stack);
+    static void create_user_defined_fn_call_node(int end_num, int do_not_recurse,
+                                                 const std::pair<Token, std::pair<int, int>> &token,
+                                                 int id, const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                                 int &logic_indentation, bool &function_declaration, ASTCreationResult &to_return,
+                                                 IdRegister &reg, std::shared_ptr<BaseAction> &node, int &i,
+                                                 std::vector<Bracket> &brackets_stack);
+    static void create_variable_call_node(std::shared_ptr<BaseAction> &node, const std::pair<Token, std::pair<int, int>> &token,
+                                          int id);
+    static void process_unk_word(int end_num, int do_not_recurse, std::pair<Token, std::pair<int, int>> &token,
+                                 const std::vector<std::pair<Token, std::pair<int, int>>> &tokens,
+                                 int &logic_indentation,
+                                 bool &function_declaration, ASTCreationResult &to_return, IdRegister &reg,
+                                 std::shared_ptr<BaseAction> &node, int &i, std::vector<Bracket> &brackets_stack);
+
+
     static void
     get_arguments(int end_num, const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation, bool &function_declaration,
                   ASTCreationResult &to_return, IdRegister &reg, int &i, std::vector<Bracket> &brackets_stack,
                   std::vector<std::shared_ptr<BaseAction>> &arguments, std::string name);
-
     static void
     make_implicit_cast(std::shared_ptr<BaseAction> &target, BuiltinIDS function_id, VariableType original_type,
                        VariableType target_type);
-
     //validation fn's
     static void validate_variable_declaration(ValidateScope &scope, const std::shared_ptr<BaseAction> &root);
     static void validate_variable_call(ValidateScope &scope, const std::shared_ptr<BaseAction> &root);
