@@ -144,15 +144,15 @@ enum class Bracket {
 
 class Parser {
     static void
-    recursive_create_ast(const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
-                         ASTCreationResult &to_return, IdRegister &reg, std::shared_ptr<BaseAction> &root,
-                         int begin_num, int end_num, int &i, std::vector<Bracket> &brackets_stack,
-                         int if_statement_nesting);
+    recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation,
+                         bool &function_declaration, ASTCreationResult &to_return, IdRegister &reg,
+                         std::shared_ptr<BaseAction> &root, int begin_num, int end_num, int &i,
+                         std::vector<Bracket> &brackets_stack, int if_statement_nesting, int do_not_recurse);
 
-    static void check_token_is_valid_argument(Token token, int &i);
+    static void check_token_is_valid_argument(const std::pair<Token, std::pair<int, int>> &token, int &i);
 
-    static VariableType convert_token_type(Token token);
-    static int get_id(const std::vector<Token> &tokens, int & i);
+    static VariableType convert_token_type(const std::pair<Token, std::pair<int, int>> &token);
+    static int get_id(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int & i);
 
     static bool is_math_or_logic_token(Token token);
 
@@ -168,7 +168,7 @@ class Parser {
     static int get_main_fn_idx(TreeResult &t_res, int main_id);
 
     static void
-    get_arguments(int end_num, const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
+    get_arguments(int end_num, const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation, bool &function_declaration,
                   ASTCreationResult &to_return, IdRegister &reg, int &i, std::vector<Bracket> &brackets_stack,
                   std::vector<std::shared_ptr<BaseAction>> &arguments, std::string name);
 

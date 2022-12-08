@@ -10,12 +10,15 @@ struct Options {
         //TODO
         //batches separate pop and push commands into one command if they are directly connected
         bool batch_byte_words = true;
+    };
+    OptimizationOptions optimization{};
+
+    struct OtherOptions {
         //TODO
         //for function arguments
         bool allow_implicit_cast_of_simple_types_for_builtin_fns = true;
         bool allow_implicit_cast_of_simple_types_for_user_defined_fns = false;
     };
-    OptimizationOptions optimization{};
 
     struct WarningOptions {
         //TODO

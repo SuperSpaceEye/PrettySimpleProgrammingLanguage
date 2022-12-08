@@ -1,7 +1,7 @@
 fn int fib_test(int n) {
     if (less_eq(n, 1)) {
         return(n);
-    } end
+    }
     return(add(fib_test(sub(n, 1)), fib_test(sub(n, 2))));
 }
 
@@ -21,8 +21,8 @@ fn int while_loop_test(int n) {
 
             asgn_add(counter, 1);
             asgn_sub(nn, 1);
-        } end
-    } end
+        }
+    }
 
     return(counter);
 }
@@ -33,6 +33,28 @@ fn int test1(int n) {
     asgn(n, add(n, a));
 
     return(n);
+}
+
+fn int test5(int a) {
+    var int b;
+    var int c;
+    var int d;
+    asgn(a, 1);
+    asgn(b, 1);
+    asgn(c, 1);
+    asgn(d, 1);
+
+    if (a) {
+        if (b) {
+            if (c) {
+                if (d) {
+                    print_num(1);
+                } else {print_num(2);}
+            } else {print_num(3);}
+        } else {print_num(4);}
+    }
+
+    return(5);
 }
 
 fn int test2(int n) {

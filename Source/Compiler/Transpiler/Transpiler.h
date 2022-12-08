@@ -22,14 +22,15 @@ public:
 };
 
 struct TranspilerResult {
-    std::vector<Token> tokens;
+    std::vector<std::pair<Token, std::pair<int, int>>> tokens;
     WordRegister wreg;
 };
 
 class Transpiler {
 private:
-    static std::vector<Token> get_token(std::string &word, WordRegister &wreg);
-    static void add_token(std::vector<Token> & main_tokens, std::vector<Token> to_emplace_tokens);
+    static std::vector<std::pair<Token, std::pair<int, int>>>
+    get_token(std::string &word, WordRegister &wreg, int row, int chrp);
+    static void add_token(std::vector<std::pair<Token, std::pair<int, int>>> &main_tokens, std::vector<std::pair<Token, std::pair<int, int>>> to_emplace_tokens);
 
     static void transpile(TranspilerResult &to_return, std::string &word, const std::basic_string<char> &data);
 public:

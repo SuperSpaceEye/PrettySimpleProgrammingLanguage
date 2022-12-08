@@ -272,6 +272,7 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
                 if (return_type == VariableType::VOID) {
                     if (arg != nullptr) {throw std::logic_error("Return from void function.");}
                 } else {
+                    if (arg == nullptr) {throw std::logic_error("Empty return from non-void function.");}
                     switch (arg->act_type) {
                         case ActionType::VariableCall: {
                             auto & var = *static_cast<VariableCall*>(arg.get());
@@ -304,6 +305,10 @@ Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &ro
             }
                 break;
         }
+        if (root == nullptr) {
+            throw std::logic_error("Something gone wrong.");
+        }
+
         prev_root = root;
         root = root->next_action;
     }

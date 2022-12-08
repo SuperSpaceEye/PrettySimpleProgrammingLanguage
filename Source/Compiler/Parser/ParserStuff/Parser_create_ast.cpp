@@ -6,7 +6,7 @@
 
 ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
     ASTCreationResult to_return{{}, IdRegister{t_result.wreg}};
-    std::vector<Token> & tokens = t_result.tokens;
+    std::vector<std::pair<Token, std::pair<int, int>>> & tokens = t_result.tokens;
 
     int i = 0;
     while (i < tokens.size() - 1) {
@@ -19,7 +19,7 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
         std::vector<Bracket> brackets_stack;
 
         recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, to_return.reg, root, 0,
-                             tokens.size(), i, brackets_stack, 0);
+                             tokens.size(), i, brackets_stack, 0, 0);
 
         i++;
         to_return.object_roots.emplace_back(beginning->next_action);
@@ -29,20 +29,21 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
     return to_return;
 }
 
-void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
-                                  ASTCreationResult &to_return, IdRegister &reg, std::shared_ptr<BaseAction> &root,
-                                  int begin_num, int end_num, int &i, std::vector<Bracket> &brackets_stack,
-                                  int if_statement_nesting) {
+void
+Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation,
+                             bool &function_declaration, ASTCreationResult &to_return, IdRegister &reg,
+                             std::shared_ptr<BaseAction> &root, int begin_num, int end_num, int &i,
+                             std::vector<Bracket> &brackets_stack, int if_statement_nesting, int do_not_recurse) {
     std::shared_ptr<BaseAction> temp_root;
     for (; i < end_num; i++) {
         auto token = tokens[i];
 
-        switch (token) {
+        switch (token.first) {
             case Token::FUNCTION: {
                 function_declaration = true;
 
                 bool is_inline = false;
-                if (tokens[++i] == Token::INLINE) {is_inline = true;} else {--i;}
+                if (tokens[++i].first == Token::INLINE) {is_inline = true;} else {--i;}
 
                 VariableType return_type;
 
@@ -55,12 +56,12 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 //var type, is_reference, var id
                 std::vector<std::tuple<VariableType, bool, int>> arguments;
 
-                if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration."};}
-                while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
+                if (tokens[++i].first != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function declaration."};}
+                while (tokens[++i].first != Token::RIGHT_CIRCLE_BRACKET) {
                     check_token_is_valid_argument(tokens[i], i);
 
                     auto var_type = convert_token_type(tokens[i]);
-                    auto is_ref = false; if (tokens[++i] == Token::REF) {is_ref=true;} else {--i;}
+                    auto is_ref = false; if (tokens[++i].first == Token::REF) {is_ref=true;} else {--i;}
                     auto var_id = get_id(tokens, ++i);
 
                     reg.register_variable(var_id);
@@ -78,13 +79,13 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 break;
             case Token::VAR:
                 if (logic_indentation == 0) {throw std::logic_error{"Can't declare global variable."};}
-                if (tokens[++i] == Token::ARRAY) {
+                if (tokens[++i].first == Token::ARRAY) {
 
                 } else {
                     auto var_type = convert_token_type(tokens[i]);
 
                     bool is_ref = false;
-                    if (tokens[++i] != Token::REF) {is_ref = true;} else {--i;}
+                    if (tokens[++i].first != Token::REF) {is_ref = true;} else {--i;}
 
                     auto var_id = get_id(tokens, i);
                     reg.register_variable(var_id);
@@ -105,17 +106,20 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
 
                 auto true_branch = std::make_shared<BaseAction>(BaseAction{});
                 {
-                    if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid if statement declaration.");}
+                    if (tokens[++i].first != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid if statement declaration.");}
                     auto in_root = true_branch;
                     recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+                                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0,
+                                         do_not_recurse+1);
                 }
                 std::shared_ptr<BaseAction> false_branch = std::make_shared<BaseAction>(BaseAction{});
-                if (tokens[i] == Token::ELSE) {
-                    if (tokens[++i] == Token::IF || tokens[i] == Token::BEGIN_LOGIC_BLOCK) {
+                if (tokens[i+1].first== Token::ELSE) {
+                    i++;
+                    if (tokens[++i].first== Token::IF || tokens[i].first== Token::BEGIN_LOGIC_BLOCK) {
                         auto in_root = false_branch;
                         recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                             to_return, reg, in_root, 0, end_num, i, brackets_stack, if_statement_nesting+1);
+                                             to_return, reg, in_root, 0, end_num, i, brackets_stack,
+                                             if_statement_nesting + 1, do_not_recurse+1);
                     } else {throw std::logic_error("Invalid if statement declaration.");}
                 }
 
@@ -128,6 +132,10 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 root = if_action;
 
                 if (if_statement_nesting) { return;}
+
+//                if (!do_not_recurse) {
+//                    i--;
+//                }
             }
                 break;
             case Token::WHILE: {
@@ -140,10 +148,10 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
 
                 auto body = std::make_shared<BaseAction>(BaseAction{});
 
-                if (tokens[++i] != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid while declaration.");}
+                if (tokens[++i].first!= Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid while declaration.");}
                 auto in_root = body;
                 recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                     to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+                                     to_return, reg, in_root, 0, end_num, i, brackets_stack, 0, do_not_recurse+1);
 
                 auto while_action = std::make_shared<WhileLoop>(WhileLoop{
                     BaseAction{ActionType::WhileLoop},
@@ -186,8 +194,12 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                 temp_root = std::make_shared<BaseAction>(BaseAction{ActionType::StartLogicBlock});
                 root->next_action = temp_root;
                 root = temp_root;
-                recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, reg, root, begin_num,
-                                     end_num, ++i, brackets_stack, 0);
+                if (!do_not_recurse) {
+                    recursive_create_ast(tokens, logic_indentation, function_declaration, to_return, reg, root,
+                                         begin_num, end_num, ++i, brackets_stack, 0, do_not_recurse);
+                } else {
+                    do_not_recurse--;
+                }
                 break;
             case Token::END_LOGIC_BLOCK:
                 if (brackets_stack.size() == 0) {throw std::logic_error("Unclosed scope bracket.");}
@@ -213,7 +225,8 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
             case Token::UNK_WORD: {
                 //TODO make logic for x, y, z = array_output_func();
 
-                auto id = (int)tokens[++i];
+                auto id = (int)tokens[++i].first;
+                token = tokens[i];
 
                 if (reg.check_function(id)) {
                     if (reg.is_builtin_fn(id)) {
@@ -247,15 +260,16 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                         //var type, is_reference, var id
                         std::vector<std::shared_ptr<BaseAction>> arguments;
 
-                        if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
+                        if (tokens[++i].first!= Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid function call."};}
 
                         brackets_stack.emplace_back(Bracket::Circle);
-                        if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
-                        while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
+                        if (tokens[i+1].first == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
+                        while (tokens[++i].first!= Token::RIGHT_CIRCLE_BRACKET) {
                             auto arg_root = std::make_shared<BaseAction>();
                             auto in_root = arg_root;
                             recursive_create_ast(tokens, logic_indentation, function_declaration,
-                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
+                                                 to_return, reg, in_root, 0, end_num, i, brackets_stack, 0,
+                                                 do_not_recurse);
                             arguments.emplace_back(arg_root->next_action);
                         }
 
@@ -277,7 +291,9 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
                     root = temp_root;
                     continue;
                 } else {
-                    throw std::logic_error("Undeclared token");
+                    throw std::logic_error(std::string{"Undeclared id at"}
+                    + " row " + std::to_string(token.second.first)
+                    + " col " + std::to_string(token.second.second));
                 }
 
             }
@@ -294,8 +310,8 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
 
             case Token::STR_BRACKET: {
                 std::vector<char> data;
-                while (tokens[++i] != Token::STR_BRACKET) {
-                    data.emplace_back((char)((int)tokens[i]-num_tokens));
+                while (tokens[++i].first != Token::STR_BRACKET) {
+                    data.emplace_back((char)((int)tokens[i].first-num_tokens));
                 }
                 i++;
 
@@ -306,9 +322,8 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
             }
                 break;
 
-            case Token::END:
             case Token::ELSE:
-                return;
+                break;
 
             case Token::ARRAY:
             case Token::INT:
@@ -317,7 +332,9 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
             case Token::VOID:
             case Token::COMMENT:
             case Token::INLINE:
-                throw std::logic_error{"Invalid token"};
+                throw std::logic_error(std::string{"Invalid token at "}
+                + "row " + std::to_string(token.second.first)
+                + " col " + std::to_string(token.second.second));
             default:
                 throw std::logic_error{"Shouldn't happen."};
         }
@@ -331,29 +348,49 @@ void Parser::recursive_create_ast(const std::vector<Token> &tokens, int &logic_i
     }
 }
 
-void Parser::get_arguments(int end_num, const std::vector<Token> &tokens, int &logic_indentation, bool &function_declaration,
-                      ASTCreationResult &to_return, IdRegister &reg, int &i, std::vector<Bracket> &brackets_stack,
-                      std::vector<std::shared_ptr<BaseAction>> &arguments, std::string name) {
-    if (tokens[++i] != Token::LEFT_CIRCLE_BRACKET) {throw std::logic_error{"Invalid "+name};}
+void Parser::get_arguments(int end_num, const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation, bool &function_declaration,
+                           ASTCreationResult &to_return, IdRegister &reg, int &i, std::vector<Bracket> &brackets_stack,
+                           std::vector<std::shared_ptr<BaseAction>> &arguments, std::string name) {
+    if (tokens[++i].first != Token::LEFT_CIRCLE_BRACKET) {
+        throw std::logic_error{
+                std::string{"No closing circle bracket in "} + name + " declaration at "
+                + "row " + std::to_string(tokens[i].second.first)
+                + " col " + std::to_string(tokens[i].second.second)};
+    }
 
     brackets_stack.emplace_back(Bracket::Circle);
 
-    if (tokens[i+1] == Token::RIGHT_CIRCLE_BRACKET) {brackets_stack.pop_back();}
-    while (tokens[++i] != Token::RIGHT_CIRCLE_BRACKET) {
+    if (tokens[i + 1].first == Token::RIGHT_CIRCLE_BRACKET) { brackets_stack.pop_back(); }
+    while (tokens[++i].first != Token::RIGHT_CIRCLE_BRACKET) {
         auto arg_root = std::make_shared<BaseAction>();
         auto in_root = arg_root;
         recursive_create_ast(tokens, logic_indentation, function_declaration,
-                             to_return, reg, in_root, 0, end_num, i, brackets_stack, 0);
-        arguments.emplace_back(arg_root->next_action);
+                             to_return, reg, in_root, 0, end_num, i, brackets_stack, 0, 0);
+        arg_root = arg_root->next_action;
+        switch (arg_root->act_type) {
+            case ActionType::VariableCall:
+            case ActionType::FunctionCall:
+            case ActionType::NumericConst:
+            case ActionType::StringConst:
+                break;
+            default:
+                throw std::logic_error("Invalid argument action type.");
+        }
+
+        if (arg_root->next_action != nullptr) {
+            throw std::logic_error("Invalid declaration of an argument.");
+        }
+
+        arguments.emplace_back(arg_root);
     }
 }
 
-int Parser::get_id(const std::vector<Token> &tokens, int &i) {
-    return (int)tokens[++i];
+int Parser::get_id(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &i) {
+    return (int)tokens[++i].first;
 }
 
-VariableType Parser::convert_token_type(Token token) {
-    switch (token) {
+VariableType Parser::convert_token_type(const std::pair<Token, std::pair<int, int>> &token) {
+    switch (token.first) {
         case Token::VOID:  return VariableType::VOID; break;
         case Token::INT:   return VariableType::INT; break;
         case Token::UINT:  return VariableType::UINT; break;
@@ -361,12 +398,15 @@ VariableType Parser::convert_token_type(Token token) {
         case Token::ARRAY: return VariableType::ARRAY; break;
         case Token::STRING:return VariableType::STRING;
         default:
-            throw std::logic_error{"Invalid token in variable type."};
+            throw std::logic_error{
+                "Unknown type in variable type at "
+                "row " + std::to_string(token.second.first) +
+                " col " + std::to_string(token.second.second) + "."};
     }
 }
 
-void Parser::check_token_is_valid_argument(Token token, int &i) {
-    switch (token) {
+void Parser::check_token_is_valid_argument(const std::pair<Token, std::pair<int, int>> &token, int &i) {
+    switch (token.first) {
         case Token::INT:
         case Token::UINT:
         case Token::FLOAT:
@@ -376,7 +416,10 @@ void Parser::check_token_is_valid_argument(Token token, int &i) {
             ++i;
             break;
         default:
-            throw std::logic_error{"Invalid function argument declaration."};
+            throw std::logic_error{"Invalid function argument token at "
+                                   " row " + std::to_string(token.second.first) +
+                                   " col " + std::to_string(token.second.second) +
+                                   "."};
     }
 }
 
