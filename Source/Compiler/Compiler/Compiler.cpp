@@ -28,7 +28,7 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
 int type_size(VariableType type) {
     switch (type) {
         case VariableType::VOID: return 0;
-        case VariableType::B_ANY: return 8;
+        case VariableType::NUMERIC_ANY: return 8;
 
         case VariableType::INT:
         case VariableType::UINT:
@@ -166,7 +166,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                             //if ref of b_any then must also place type information
 
                             if (arg_is_ref(fn_call, i)) {
-                                if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                                if (fn_call.required_arguments[i] == VariableType::NUMERIC_ANY) {
                                     main_part.emplace_back(ByteCode::PUSH);
                                     put_4_num(main_part, 4);
                                     put_4_num(main_part, (uint32_t)var_call.type);
@@ -181,7 +181,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                                 scope.push(4, -1, VariableType::UINT);
                             //if not ref, then make copy of stack variable
                             } else {
-                                if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                                if (fn_call.required_arguments[i] == VariableType::NUMERIC_ANY) {
                                     main_part.emplace_back(ByteCode::PUSH);
                                     put_4_num(main_part, 4);
                                     put_4_num(main_part, (uint32_t)var_call.type);
@@ -197,7 +197,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         }
                             break;
                         case ActionType::FunctionCall: {
-                            if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                            if (fn_call.required_arguments[i] == VariableType::NUMERIC_ANY) {
                                 auto &arg_fn_call = *static_cast<FunctionCallAction*>(arg.get());
                                 main_part.emplace_back(ByteCode::PUSH);
                                 put_4_num(main_part, 4);
@@ -215,7 +215,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         //If number const, then just push value saved in code to stack.
                         case ActionType::NumericConst: {
                             auto & num_call = *static_cast<NumericConst*>(arg.get());
-                            if (fn_call.required_arguments[i] == VariableType::B_ANY) {
+                            if (fn_call.required_arguments[i] == VariableType::NUMERIC_ANY) {
                                 main_part.emplace_back(ByteCode::PUSH);
                                 put_4_num(main_part, 4);
                                 put_4_num(main_part, (uint32_t)num_call.type);

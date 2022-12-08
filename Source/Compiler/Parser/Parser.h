@@ -143,8 +143,15 @@ enum class Bracket {
 };
 
 class Parser {
-    static void
-    recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation,
+    //row col string
+    static std::string rcs(std::pair<int, int> pos) {
+        return "Row " + std::to_string(pos.first) +
+               " Col " + std::to_string(pos.second) + ".";
+    }
+    static std::string type_to_str(VariableType type);
+    static bool var_type_is_numeric(VariableType type);
+
+    static void recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, int>>> &tokens, int &logic_indentation,
                          bool &function_declaration, ASTCreationResult &to_return, IdRegister &reg,
                          std::shared_ptr<BaseAction> &root, int begin_num, int end_num, int &i,
                          std::vector<Bracket> &brackets_stack, int if_statement_nesting, int do_not_recurse);
@@ -175,6 +182,24 @@ class Parser {
     static void
     make_implicit_cast(std::shared_ptr<BaseAction> &target, BuiltinIDS function_id, VariableType original_type,
                        VariableType target_type);
+
+    //validation fn's
+    static void validate_variable_declaration(ValidateScope &scope, const std::shared_ptr<BaseAction> &root);
+    static void validate_variable_call(ValidateScope &scope, const std::shared_ptr<BaseAction> &root);
+    static void validate_fn_call(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids, int &last_id,
+                                 std::shared_ptr<BaseAction> &prev_root);
+    static void validate_fn_decl(ValidateScope &scope, const std::shared_ptr<BaseAction> &root, int &last_id,
+                                 int &do_not_push_scope);
+    static void validate_while_loop(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
+                                    int &last_id,
+                                    std::shared_ptr<BaseAction> &prev_root);
+    static void validate_if_statement(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
+                                      int &last_id, std::shared_ptr<BaseAction> &prev_root);
+    static void validate_return_call(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
+                                     int &last_id,
+                                     std::shared_ptr<BaseAction> &prev_root);
+    static void start_logic_block(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
+                                  std::shared_ptr<BaseAction> &prev_root, int &do_not_push_scope);
 public:
 
     static TreeResult create_tree(TranspilerResult &t_result, const Options &options) {

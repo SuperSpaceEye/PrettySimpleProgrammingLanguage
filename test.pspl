@@ -54,7 +54,7 @@ fn void test5(int a) {
         } else {print_num(4);}
     }
 
-    return(50);
+    return();
 }
 
 fn int test2(int n) {

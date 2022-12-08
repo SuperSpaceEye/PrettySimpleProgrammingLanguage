@@ -12,7 +12,7 @@ std::string get_string_type(VariableType type) {
         case VariableType::FLOAT:  return "float";
         case VariableType::ARRAY:  return "array";
         case VariableType::STRING: return "string";
-        case VariableType::B_ANY:  return "any type(checks should be implemented by dev)";
+        case VariableType::NUMERIC_ANY:  return "any type(checks should be implemented by dev)";
         default: throw std::logic_error("not implemented type");
     }
 }
