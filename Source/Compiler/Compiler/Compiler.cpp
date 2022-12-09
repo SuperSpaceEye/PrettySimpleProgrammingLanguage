@@ -74,8 +74,8 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
             //positional argument
             scope.push(4, -1, VariableType::UINT);
 
-            auto & fn_call = *static_cast<FunctionDeclaration*>(tree_res.object_roots[i].get());
-            for (auto & arg: fn_call.arguments) {
+            auto &fn_call = *static_cast<FunctionDeclaration *>(tree_res.object_roots[i].get());
+            for (auto &arg: fn_call.arguments) {
                 int _type_size;
                 //if reference
                 if (std::get<1>(arg)) {
@@ -93,6 +93,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
 
         auto node = tree_res.object_roots[i];
         code_parts.emplace_back();
+        if (i == tree_res.main_idx) { code_parts.back().fn_code.emplace_back(ByteCode::PUSH_STACK_FRAME);}
         code_parts.back().id = static_cast<FunctionDeclaration*>(node.get())->fn_id;
         recursive_compile(code_parts.back(), scope, node, i == tree_res.main_idx, do_not_push, 0, 0, 0);
     }
@@ -533,9 +534,13 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
         switch (code[i]) {
             case ByteCode::PUSH: {
                 std::cout << num << ". PUSH " << *((int32_t*)&code[++i]);
+                auto num_b = *(uint32_t*)&code[i];
                 i+=4;
-                std::cout << " " << *((int32_t*)&code[i]) << "\n";
-                i+=3; num+=9;
+                for (int ii = 0; ii < num_b; ii+=4) {
+                    std::cout << " " << *((int32_t*)&code[i+ii]);
+                }
+                std::cout << "\n";
+                i+=num_b-1; num+=5+num_b;
             }
                 break;
             case ByteCode::POP: {
@@ -600,39 +605,146 @@ std::vector<ByteCode> Compiler::compile_to_bytecode(std::vector<FunctionPart> &p
     return concat_code(parts);
 }
 
-// TODO
+std::pair<bool, uint32_t*> is_in_any(uint32_t pos, FunctionPart & part) {
+    for (auto & litem: part.parent_end_of_fn_calls) {
+        for (auto & item: litem) {
+            if (item == pos) {
+                return {true, &item};
+            }
+        }
+    }
+    for (auto & item: part.calls_to_custom) {
+        if (item.first == pos) {
+            return {true, &item.first};
+        }
+    }
+    for (auto & item: part.calls_from_custom) {
+        if (item == pos) {
+            return {true, &item};
+        }
+    }
+    return {false, nullptr};
+}
+
+//after deletion of code the positions of values (and relative values themselves) are now point at wrong locations, and
+//must be fixed
+void norm_items(uint32_t start_pos, uint32_t removed, FunctionPart & part) {
+    if (!removed) { return;}
+    for (auto & item: part.relative_gotos_inside_fn) {
+        //fixing the number of the position of the value in code.
+        if (item > start_pos) {
+            item -= removed;
+        }
+        //whenever or not the position of the value was fixed or not, we need
+        //to check if the relative position needs to be fixed.
+        if (*(uint32_t*)&part.fn_code[item] >= start_pos) {
+            *(uint32_t *)&part.fn_code[item] -= removed;
+        }
+    }
+    for (auto & litem: part.parent_end_of_fn_calls) {
+        for (auto & item: litem) {
+            if (item > start_pos) {
+                item -= removed;
+            }
+        }
+    }
+    for (auto & item: part.calls_to_custom) {
+        if (item.first > start_pos) {
+            item.first -= removed;
+        }
+    }
+    for (auto & item: part.calls_from_custom) {
+        if (item > start_pos) {
+            item -= removed;
+        }
+    }
+}
+
 void Compiler::batch_byte_words(FunctionPart &part) {
-//    uint32_t cur = 0;
-//
-//    ByteCode last_command = ByteCode::REL_GOTO;
-//    int start_command = -1;
-//    int times = 0;
-//
-//    while (cur < part.fn_code.size()) {
-//        switch (part.fn_code[cur]) {
-//            case ByteCode::PUSH: {
-//                if (last_command != ByteCode::PUSH) {
-//                    last_command = ByteCode::PUSH;
-//                    start_command = cur;
-//                    times = 1;
-//                } else {
-//                    times++;
-//                }
-//            }
-//                break;
-//            case ByteCode::POP:
-//                break;
-//            case ByteCode::SWAP:             cur+=13;break;
-//            case ByteCode::COPY_PUSH:        cur+=13;break;
-//            case ByteCode::BUILTIN_CALL:     cur+=5;break;
-//            case ByteCode::GOTO:             cur+=5;break;
-//            case ByteCode::COND_GOTO:        cur+=5;break;
-//            case ByteCode::REL_GOTO:         cur++;break;
-//            case ByteCode::GET_ABSOLUTE_POS: cur+=9;break;
-//            case ByteCode::PUSH_STACK_FRAME: cur++;break;
-//            case ByteCode::POP_STACK_FRAME:  cur++;break;
-//        }
-//    }
+    uint32_t cur = 0;
+
+    ByteCode last_command = ByteCode::REL_GOTO;
+    int start_command = -1;
+
+    std::vector<uint8_t> data{};
+    std::vector<std::pair<uint32_t*, uint32_t>> additional_data;
+
+    auto & bcode = part.fn_code;
+
+    while (cur < bcode.size()) {
+        auto word = bcode[cur];
+
+        if (last_command != word) {
+            if (word == ByteCode::PUSH) {
+                start_command = cur;
+                last_command = word;
+                continue;
+            }
+
+            if (!data.empty()) {
+                uint32_t fused_number = data.size();
+                auto fused_size = 1 + 4 + fused_number;
+
+                auto removed_num = cur - start_command - fused_size;
+
+                cur -= removed_num;
+
+                bcode.erase(bcode.begin()+start_command+fused_size,
+                            bcode.begin()+start_command+fused_size+removed_num);
+
+                *(uint32_t*)&bcode[start_command+1] = fused_number;
+
+                int i = start_command+5;
+                for (auto item: data) {
+                    bcode[i] = (ByteCode)item;
+                    i++;
+                }
+
+                data.clear();
+                last_command = word;
+
+                norm_items(start_command, removed_num, part);
+
+                for (auto & item: additional_data) {
+                    *item.first = start_command + 1 + 4 + item.second;
+                }
+                additional_data.clear();
+
+                continue;
+            }
+        }
+
+        switch (word) {
+            case ByteCode::PUSH: {
+                cur++;
+                auto num = *(uint32_t*)&part.fn_code[cur];
+                cur+=4;
+
+                auto res = is_in_any(cur, part);
+                if (res.first) {additional_data.emplace_back(res.second, data.size());}
+
+                for (int i = 0; i < num; i++) {
+                    data.emplace_back((uint8_t)part.fn_code[cur]);
+                    cur++;
+                }
+            }
+                break;
+            //TODO do the same optimization for pop's?
+            case ByteCode::POP: {
+                cur += 5;
+            }
+                break;
+            case ByteCode::SWAP:             cur+=13;break;
+            case ByteCode::COPY_PUSH:        cur+=13;break;
+            case ByteCode::BUILTIN_CALL:     cur+=5;break;
+            case ByteCode::GOTO:             cur+=5;break;
+            case ByteCode::COND_GOTO:        cur+=5;break;
+            case ByteCode::REL_GOTO:         cur++;break;
+            case ByteCode::GET_ABSOLUTE_POS: cur+=9;break;
+            case ByteCode::PUSH_STACK_FRAME: cur++;break;
+            case ByteCode::POP_STACK_FRAME:  cur++;break;
+        }
+    }
 }
 
 void Compiler::link_code_parts(std::vector<FunctionPart> &parts) {

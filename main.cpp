@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     //TODO
     Options options{};
     auto arguments = read_arguments(argc, argv);
+    options.optimization.batch_byte_words = false;
 
     auto data = open_files(std::vector<std::string>({"/home/spaceeye/CLionProjects/AnotherProgrammingLanguage/test.pspl"}));
 

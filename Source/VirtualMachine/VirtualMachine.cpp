@@ -29,8 +29,8 @@ switch (arg1_type) {\
         break;\
     }\
     \
-    stack.resize(stack.size()+4);\
-    *((uint32_t*)&stack[stack.size()-4]) = result; \
+stack.resize(stack.size()+4);\
+*((uint32_t*)&stack[stack.size()-4]) = result; \
 
 #define NO_REF_LOGIC_OPERATION(operation) \
 auto arg1_type = (VariableType)get_4_num(stack, stack.size()-16); \
@@ -53,8 +53,8 @@ switch (arg1_type) {\
         break;\
     }\
     \
-    stack.resize(stack.size()+4);\
-    *((uint32_t*)&stack[stack.size()-4]) = arg1_val;\
+stack.resize(stack.size()+4);\
+*((uint32_t*)&stack[stack.size()-4]) = arg1_val;\
 
 #define REF_OPERATION(operation) \
 auto arg1_type = (VariableType)get_4_num(stack, stack.size()-16);\

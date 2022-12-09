@@ -8,7 +8,7 @@
 struct Options {
     struct OptimizationOptions {
         //TODO
-        //batches separate pop and push commands into one command if they are directly connected
+        //batches separate pop commands into one command if they are directly connected
         bool batch_byte_words = true;
     };
     OptimizationOptions optimization{};
@@ -27,7 +27,7 @@ struct Options {
 
     //debug options
     struct DebugOptions {
-        bool show_transpiler_output = true;
+        bool show_transpiler_output = false;
         bool show_parser_output = true;
         bool show_compiler_output = true;
     };

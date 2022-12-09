@@ -40,9 +40,11 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
 
         switch (token.first) {
             case Token::FUNCTION:
-                create_fn_decl_node(reg, tokens, function_declaration, node, i); break;
+                create_fn_decl_node(reg, tokens, function_declaration, node, i);
+                break;
             case Token::VAR:
-                create_var_decl_node(logic_indentation, reg, token, tokens, node, i, temp_root); break;
+                create_var_decl_node(logic_indentation, reg, token, tokens, node, i, temp_root);
+                break;
             case Token::IF:
                 create_if_statement_node(end_num, if_statement_nesting, do_not_recurse, token, tokens, logic_indentation,
                                          function_declaration, to_return, reg, node, i, brackets_stack);
@@ -50,12 +52,14 @@ Parser::recursive_create_ast(const std::vector<std::pair<Token, std::pair<int, i
                 break;
             case Token::WHILE:
                 create_while_node(end_num, do_not_recurse, token, tokens, logic_indentation, function_declaration,
-                                  to_return, reg, node, i, brackets_stack); break;
+                                  to_return, reg, node, i, brackets_stack);
+                break;
             case Token::FOR:
                 break;
             case Token::UNK_WORD:
                 process_unk_word(end_num, do_not_recurse, token, tokens, logic_indentation, function_declaration,
-                                 to_return, reg, node, i, brackets_stack); break;
+                                 to_return, reg, node, i, brackets_stack);
+                break;
             case Token::LEFT_CIRCLE_BRACKET: brackets_stack.emplace_back(Bracket::Circle); break;
             case Token::RIGHT_CIRCLE_BRACKET: {
                 if (brackets_stack.empty()) { throw std::logic_error("Unclosed circle bracket."); }
@@ -308,12 +312,13 @@ void Parser::create_if_statement_node(int end_num, int if_statement_nesting, int
     if (arguments.size() != 1) {throw std::logic_error("More than one argument in if statement. "+rcs(if_statement_pos));}
 
     auto true_branch = std::make_shared<BaseAction>(BaseAction{});
-
-    if (tokens[++i].first != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid if statement declaration. "+rcs(tokens[i].second));}
-    auto in_root = true_branch;
-    recursive_create_ast(tokens, logic_indentation, function_declaration,
-                         to_return, reg, in_root, 0, end_num, i, brackets_stack, 0,
-                         do_not_recurse+1);
+    {
+        if (tokens[++i].first != Token::BEGIN_LOGIC_BLOCK) {throw std::logic_error("Invalid if statement declaration. "+rcs(tokens[i].second));}
+        auto in_root = true_branch;
+        recursive_create_ast(tokens, logic_indentation, function_declaration,
+                             to_return, reg, in_root, 0, end_num, i, brackets_stack, 0,
+                             do_not_recurse+1);
+    }
 
     std::shared_ptr<BaseAction> false_branch = std::make_shared<BaseAction>(BaseAction{});
     if (tokens[i+1].first== Token::ELSE) {

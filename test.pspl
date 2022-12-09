@@ -39,20 +39,23 @@ fn void test5(int a) {
     var int b;
     var int c;
     var int d;
-    asgn(a, 1);
     asgn(b, 1);
     asgn(c, 1);
     asgn(d, 1);
 
     if (a) {
-        if (b) {
-            if (c) {
-                if (d) {
-                    print_num(1);
-                } else {print_num(2);}
-            } else {print_num(3);}
-        } else {print_num(4);}
+        print_num(1);
     }
+
+    #if (a) {
+    #    if (b) {
+    #        if (c) {
+    #            if (d) {
+    #                print_num(1);
+    #            } else {print_num(2);}
+    #        } else {print_num(3);}
+    #    } else {print_num(4);}
+    #}
 
     return();
 }
@@ -65,12 +68,20 @@ fn int test2(int n) {
 
 fn void main() {
     #210
-    print_num(while_loop_test(20));
+    #print_num(while_loop_test(20));
     #55
-    print_num(fib_test(10));
-
+    #print_num(fib_test(10));
     #280010
-    print_num(test1(test2(test2(test1(test1(8))))));
+    #print_num(test1(test2(test2(test1(test1(8))))));
+
+
+    var uint a;
+    asgn(a, to_uint(0));
+    if (a) {
+        print_num(1);
+    }
+
+    #test5(0);
 
     return();
 }
