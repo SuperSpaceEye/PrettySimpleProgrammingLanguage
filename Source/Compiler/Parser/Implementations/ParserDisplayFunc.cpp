@@ -2,7 +2,8 @@
 // Created by spaceeye on 27.11.22.
 //
 
-#include "../Parser.h"
+#include "../ActionTreeCreator.h"
+#include "../IdRegister.h"
 
 std::string get_string_type(VariableType type) {
     switch (type) {
@@ -37,6 +38,7 @@ std::string num_to_str(NumericConst & var) {
         case VariableType::UINT:  return std::to_string(var.value);
         case VariableType::FLOAT: return std::to_string(*(float*)&var.value);
     }
+    throw std::logic_error("Shouldn't happen. num_to_str.");
 }
 
 std::string str_const_to_str(StringConst & str) {
@@ -150,7 +152,7 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
     display_root(root->next_action.get(), indentation, reg);
 }
 
-void Parser::show_ast(std::vector<std::shared_ptr<BaseAction>> &roots, IdRegister &id_reg) {
+void ActionTreeCreator::show_ast(std::vector<std::shared_ptr<BaseAction>> &roots, IdRegister &id_reg) {
     for (auto root: roots) {
         display_root(root.get(), 0, id_reg);
     }

@@ -2,20 +2,20 @@
 // Created by spaceeye on 10.12.22.
 //
 
-#include "../Parser.h"
+#include "../TreeOptimizer.h"
 
-void Parser::optimize_tree(TreeResult &tres, const Options &options) {
+void TreeOptimizer::optimize_tree(TreeResult &tres, const Options &options) {
     if (options.optimization.trim_unreachable) {trim_unreachable(tres);}
 }
 
-void Parser::trim_unreachable(TreeResult &tres) {
+void TreeOptimizer::trim_unreachable(TreeResult &tres) {
     for (const auto& root: tres.object_roots) {
         auto node = root;
         recursive_trim_unreachable(node);
     }
 }
 
-bool Parser::recursive_trim_unreachable(std::shared_ptr<BaseAction> node) {
+bool TreeOptimizer::recursive_trim_unreachable(std::shared_ptr<BaseAction> node) {
     while (node != nullptr) {
         switch (node->act_type) {
             case ActionType::ForLoop: {

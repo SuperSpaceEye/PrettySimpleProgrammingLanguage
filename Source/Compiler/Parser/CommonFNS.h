@@ -1,10 +1,23 @@
 //
-// Created by spaceeye on 08.12.22.
+// Created by spaceeye on 10.12.22.
 //
 
-#include "../Parser.h"
+#ifndef PRETTYSIMPLEPROGRAMMINGLANGUAGE_COMMONFNS_H
+#define PRETTYSIMPLEPROGRAMMINGLANGUAGE_COMMONFNS_H
 
-std::string Parser::type_to_str(VariableType type) {
+#include <string>
+#include <exception>
+#include <stdexcept>
+
+#include "VariableType.h"
+
+//row col string
+inline std::string rcs(std::pair<int, int> pos) {
+    return "Row " + std::to_string(pos.first) +
+           " Col " + std::to_string(pos.second) + ".";
+}
+
+inline std::string type_to_str(VariableType type) {
     switch (type) {
         case VariableType::VOID:   return "void";
         case VariableType::NUMERIC_ANY:  return "numeric_any";
@@ -17,7 +30,7 @@ std::string Parser::type_to_str(VariableType type) {
     }
 }
 
-bool Parser::var_type_is_numeric(VariableType type) {
+inline bool var_type_is_numeric(VariableType type) {
     switch (type) {
         case VariableType::INT:
         case VariableType::UINT:
@@ -26,3 +39,5 @@ bool Parser::var_type_is_numeric(VariableType type) {
         default: return false;
     }
 }
+
+#endif //PRETTYSIMPLEPROGRAMMINGLANGUAGE_COMMONFNS_H

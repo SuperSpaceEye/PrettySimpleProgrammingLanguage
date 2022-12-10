@@ -10,8 +10,9 @@
 
 #include "ByteCode.h"
 #include "../Transpiler/Transpiler.h"
-#include "../Parser/Parser.h"
+#include "../Parser/ActionTreeCreator.h"
 #include "../OptionsContainer.h"
+#include "../Parser/Results.h"
 
 struct StackScope {
     //byte_len, id, type

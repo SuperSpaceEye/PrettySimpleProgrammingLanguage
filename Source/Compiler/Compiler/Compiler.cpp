@@ -7,7 +7,7 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
     auto res = Transpiler::transpile_data(str_data);
     if (options.debug.show_transpiler_output) {Transpiler::display_tokens(res);}
 
-    auto tree = Parser::create_tree(res, options);
+    auto tree = ActionTreeCreator::create_tree(res, options);
     auto parts = compile_(tree);
     auto code = compile_to_bytecode(parts, options);
 
@@ -39,6 +39,7 @@ int type_size(VariableType type) {
         case VariableType::STRING:
             return 8;
     }
+    throw std::logic_error("Shouldn't happen. type_size.");
 }
 
 bool arg_is_ref(FunctionCallAction & node, int pos) {

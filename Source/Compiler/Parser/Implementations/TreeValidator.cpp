@@ -1,12 +1,10 @@
 //
-// Created by spaceeye on 27.11.22.
+// Created by spaceeye on 10.12.22.
 //
 
-#include "../Parser.h"
+#include "../TreeValidator.h"
 
-bool check_for_main(ASTCreationResult & ast_result);
-
-void Parser::validate_ast(ASTCreationResult &ast_result) {
+void TreeValidator::validate_ast(ASTCreationResult &ast_result) {
     if (!check_for_main(ast_result)) {throw std::logic_error("No void main() function");}
 
     ValidateScope scope;
@@ -20,8 +18,8 @@ void Parser::validate_ast(ASTCreationResult &ast_result) {
     }
 }
 
-void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
-                           std::shared_ptr<BaseAction> &prev_root) {
+void TreeValidator::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
+                                       std::shared_ptr<BaseAction> &prev_root) {
     int do_not_push_scope = 0;
     while (root != nullptr) {
         switch (root->act_type) {
@@ -51,8 +49,8 @@ void Parser::recursive_validate(ValidateScope &scope, std::shared_ptr<BaseAction
     }
 }
 
-void Parser::start_logic_block(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
-                               std::shared_ptr<BaseAction> &prev_root, int &do_not_push_scope) {
+void TreeValidator::start_logic_block(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
+                                      std::shared_ptr<BaseAction> &prev_root, int &do_not_push_scope) {
     if (!do_not_push_scope) {
         scope.push_scope();
     } else { do_not_push_scope--; }
@@ -61,8 +59,8 @@ void Parser::start_logic_block(ValidateScope &scope, std::shared_ptr<BaseAction>
     recursive_validate(scope, root, ids, last_id, prev_root);
 }
 
-void Parser::validate_return_call(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
-                             int &last_id, std::shared_ptr<BaseAction> &prev_root) {
+void TreeValidator::validate_return_call(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
+                                         int &last_id, std::shared_ptr<BaseAction> &prev_root) {
     auto & ret_call = *static_cast<ReturnCall*>(root.get());
     auto fn = scope.get_fn(ids.back());
     auto return_type = std::get<2>(fn);
@@ -109,8 +107,8 @@ void Parser::validate_return_call(const std::shared_ptr<BaseAction> &root, Valid
     }
 }
 
-void Parser::validate_if_statement(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
-                              int &last_id, std::shared_ptr<BaseAction> &prev_root) {
+void TreeValidator::validate_if_statement(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
+                                          int &last_id, std::shared_ptr<BaseAction> &prev_root) {
     auto & if_call = *static_cast<IfStatement*>(root.get());
 
     switch (if_call.expression->act_type) {
@@ -122,9 +120,9 @@ void Parser::validate_if_statement(const std::shared_ptr<BaseAction> &root, Vali
 
             if (var_call.type != VariableType::UINT) {
                 make_implicit_cast(if_call.expression,
-                                   BuiltinIDS::TO_UINT,
-                                   var_call.type,
-                                   VariableType::UINT);}
+                                                      BuiltinIDS::TO_UINT,
+                                                      var_call.type,
+                                                      VariableType::UINT);}
         }
             break;
         case ActionType::FunctionCall: {
@@ -134,9 +132,9 @@ void Parser::validate_if_statement(const std::shared_ptr<BaseAction> &root, Vali
             recursive_validate(scope, expr, ids, last_id, prev_root);
             if (fn_call.return_type != VariableType::UINT) {
                 make_implicit_cast(if_call.expression,
-                                   BuiltinIDS::TO_UINT,
-                                   fn_call.return_type,
-                                   VariableType::UINT);}
+                                                      BuiltinIDS::TO_UINT,
+                                                      fn_call.return_type,
+                                                      VariableType::UINT);}
         }
             break;
         default: {throw std::logic_error("Incorrect type of action in an if statement expression. "+rcs(if_call.pos));}
@@ -150,8 +148,8 @@ void Parser::validate_if_statement(const std::shared_ptr<BaseAction> &root, Vali
     recursive_validate(scope, in, ids, last_id, prev_root);
 }
 
-void Parser::validate_while_loop(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
-                            int &last_id, std::shared_ptr<BaseAction> &prev_root) {
+void TreeValidator::validate_while_loop(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
+                                        int &last_id, std::shared_ptr<BaseAction> &prev_root) {
     auto & while_act = *static_cast<WhileLoop*>(root.get());
 
     switch (while_act.expression->act_type) {
@@ -192,8 +190,8 @@ void Parser::validate_while_loop(const std::shared_ptr<BaseAction> &root, Valida
     recursive_validate(scope, body, ids, last_id, prev_root);
 }
 
-void Parser::validate_fn_decl(ValidateScope &scope, const std::shared_ptr<BaseAction> &root, int &last_id,
-                              int &do_not_push_scope) {
+void TreeValidator::validate_fn_decl(ValidateScope &scope, const std::shared_ptr<BaseAction> &root, int &last_id,
+                                     int &do_not_push_scope) {
     auto & fn_decl = *static_cast<FunctionDeclaration*>(root.get());
     last_id = fn_decl.fn_id;
 
@@ -209,8 +207,8 @@ void Parser::validate_fn_decl(ValidateScope &scope, const std::shared_ptr<BaseAc
     }
 }
 
-void Parser::validate_fn_call(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
-                         int &last_id, std::shared_ptr<BaseAction> &prev_root) {
+void TreeValidator::validate_fn_call(const std::shared_ptr<BaseAction> &root, ValidateScope &scope, std::vector<int> &ids,
+                                     int &last_id, std::shared_ptr<BaseAction> &prev_root) {
     auto & fn_call = *static_cast<FunctionCallAction*>(root.get());
 
     int num_needed_args = std::get<1>(scope.get_fn(fn_call.name_id)).size();
@@ -277,13 +275,13 @@ void Parser::validate_fn_call(const std::shared_ptr<BaseAction> &root, ValidateS
     }
 }
 
-void Parser::validate_variable_call(ValidateScope &scope, const std::shared_ptr<BaseAction> &root) {
+void TreeValidator::validate_variable_call(ValidateScope &scope, const std::shared_ptr<BaseAction> &root) {
     auto & var_call = *static_cast<VariableCall*>(root.get());
     if (!scope.check_id(var_call.var_id)) {throw std::logic_error("Variable was not declared in this scope. "+rcs(var_call.pos));}
     var_call.type = scope.get_var_type(var_call.var_id);
 }
 
-void Parser::validate_variable_declaration(ValidateScope &scope, const std::shared_ptr<BaseAction> &root) {
+void TreeValidator::validate_variable_declaration(ValidateScope &scope, const std::shared_ptr<BaseAction> &root) {
     auto & var_decl = *static_cast<VariableDeclaration*>(root.get());
     if (scope.check_id_in_lscope(var_decl.var_id)) {throw std::logic_error("Can't redeclare a variable in the same scope. "+rcs(var_decl.pos));}
     switch (var_decl.var_type) {
@@ -300,44 +298,7 @@ void Parser::validate_variable_declaration(ValidateScope &scope, const std::shar
     scope.push_id(var_decl.var_id, var_decl.var_type);
 }
 
-void Parser::make_implicit_cast(std::shared_ptr<BaseAction> &target, BuiltinIDS function_id, VariableType original_type,
-                                VariableType target_type) {
-    switch (original_type) {
-        case VariableType::INT:
-        case VariableType::UINT:
-        case VariableType::FLOAT:
-            break;
-        default:
-            throw std::logic_error("Can't implicitly convert type {"+type_to_str(original_type)+"}."+rcs(target->pos));
-    }
-
-    target = std::make_shared<FunctionCallAction>(
-            FunctionCallAction{
-        BaseAction{ActionType::FunctionCall},
-        FunctionType::BuiltinFunction,
-        (int)function_id,
-        0,
-        target_type,
-        {target},
-        {VariableType::NUMERIC_ANY}
-    });
-}
-
-bool check_for_main(ASTCreationResult & ast_result) {
-    bool has_main = false;
-    for (auto & item: ast_result.reg.function_ids) {
-        if (std::get<1>(item) == "main") {
-            if (std::get<2>(item)->return_type == VariableType::VOID) {
-                has_main = true;
-            }
-            break;
-        }
-    }
-    if (!has_main) {return false;}
-    return true;
-}
-
-void Parser::validate_function_paths(TreeResult &tres) {
+void TreeValidator::validate_function_paths(TreeResult &tres) {
     for (const auto & root: tres.object_roots) {
         auto node = root;
         auto res = recursive_validate_function_path(node);
@@ -346,7 +307,8 @@ void Parser::validate_function_paths(TreeResult &tres) {
         }
     }
 }
-bool Parser::recursive_validate_function_path(std::shared_ptr<BaseAction> node) {
+
+bool TreeValidator::recursive_validate_function_path(std::shared_ptr<BaseAction> node) {
     while (node != nullptr) {
         switch (node->act_type) {
             case ActionType::IfStatement: {
@@ -369,4 +331,41 @@ bool Parser::recursive_validate_function_path(std::shared_ptr<BaseAction> node) 
         node = node->next_action;
     }
     return false;
+}
+
+void TreeValidator::make_implicit_cast(std::shared_ptr<BaseAction> &target, BuiltinIDS function_id, VariableType original_type,
+                                       VariableType target_type) {
+    switch (original_type) {
+        case VariableType::INT:
+        case VariableType::UINT:
+        case VariableType::FLOAT:
+            break;
+        default:
+            throw std::logic_error("Can't implicitly convert type {"+type_to_str(original_type)+"}."+rcs(target->pos));
+    }
+
+    target = std::make_shared<FunctionCallAction>(
+            FunctionCallAction{
+                    BaseAction{ActionType::FunctionCall},
+                    FunctionType::BuiltinFunction,
+                    (int)function_id,
+                    0,
+                    target_type,
+                    {target},
+                    {VariableType::NUMERIC_ANY}
+            });
+}
+
+bool TreeValidator::check_for_main(ASTCreationResult & ast_result) {
+    bool has_main = false;
+    for (auto & item: ast_result.reg.function_ids) {
+        if (std::get<1>(item) == "main") {
+            if (std::get<2>(item)->return_type == VariableType::VOID) {
+                has_main = true;
+            }
+            break;
+        }
+    }
+    if (!has_main) {return false;}
+    return true;
 }

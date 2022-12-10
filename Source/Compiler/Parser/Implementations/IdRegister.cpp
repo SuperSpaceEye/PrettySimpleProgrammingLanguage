@@ -1,8 +1,8 @@
 //
-// Created by spaceeye on 27.11.22.
+// Created by spaceeye on 10.12.22.
 //
 
-#include "../Parser.h"
+#include "../IdRegister.h"
 
 void IdRegister::register_function(int id, FunctionDeclaration *fn_dec) {
     for (auto & ids: variable_ids) {

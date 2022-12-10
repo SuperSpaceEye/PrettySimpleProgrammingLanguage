@@ -2,9 +2,10 @@
 // Created by spaceeye on 28.11.22.
 //
 
-#include "../Parser.h"
+#include "../ActionTreeCreator.h"
+#include "../Results.h"
 
-TreeResult Parser::extract_nested_functions(ASTCreationResult &ast_result) {
+TreeResult ActionTreeCreator::extract_nested_functions(ASTCreationResult &ast_result) {
     int level = 0;
 
     std::vector<int> start_levels{};
@@ -63,7 +64,7 @@ TreeResult Parser::extract_nested_functions(ASTCreationResult &ast_result) {
     return res;
 }
 
-int Parser::get_main_fn_idx(TreeResult &t_res, int main_id) {
+int ActionTreeCreator::get_main_fn_idx(TreeResult &t_res, int main_id) {
     for (int i = 0; i < t_res.object_roots.size(); i++) {
         auto root = t_res.object_roots[i];
         if (root->act_type == ActionType::FunctionDeclaration) {
