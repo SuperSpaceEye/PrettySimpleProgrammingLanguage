@@ -27,37 +27,33 @@ fn int while_loop_test(int n) {
     return(counter);
 }
 
+fn void test5(uint a) {
+    var uint b;
+    var uint c;
+    var uint d;
+    asgn(b, to_uint(1));
+    asgn(c, to_uint(0));
+    asgn(d, to_uint(1));
+
+    if (a) {
+        if (b) {
+            if (c) {
+                if (d) {
+                    print_num(1);
+                } else {print_num(2);}
+            } else {print_num(3);}
+        } else {print_num(4);}
+    }
+
+    return();
+}
+
 fn int test1(int n) {
     var int a;
     asgn(a, 10);
     asgn(n, add(n, a));
 
     return(n);
-}
-
-fn void test5(uint a) {
-    var uint b;
-    var uint c;
-    var uint d;
-    asgn(b, to_uint(1));
-    asgn(c, to_uint(1));
-    asgn(d, to_uint(1));
-
-    if (a) {
-        print_num(1);
-    }
-
-    #if (a) {
-    #    if (b) {
-    #        if (c) {
-    #            if (d) {
-    #                print_num(1);
-    #            } else {print_num(2);}
-    #        } else {print_num(3);}
-    #    } else {print_num(4);}
-    #}
-
-    return();
 }
 
 fn int test2(int n) {
@@ -68,11 +64,11 @@ fn int test2(int n) {
 
 fn void main() {
     #210
-    #print_num(while_loop_test(20));
+    print_num(while_loop_test(20));
     #55
     #print_num(fib_test(10));
     #280010
-    #print_num(test1(test2(test2(test1(test1(8))))));
+    print_num(test1(test2(test2(test1(test1(8))))));
 
     test5(to_uint(1));
 

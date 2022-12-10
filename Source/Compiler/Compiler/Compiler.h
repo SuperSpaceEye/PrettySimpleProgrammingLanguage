@@ -40,7 +40,18 @@ struct StackScope {
         throw std::logic_error("Shouldn't happen. Bytecode compilation stage. StackScope get_var. If you see this, open an issue on the github or message me, SpaceEye.");
     }
     std::tuple<uint32_t, uint32_t, VariableType> get_min_pos_var_of_scope() {
+        if (scope.back().empty()) {throw std::logic_error("Shouldn't happen. Bytecode compilation stage. StackScope get_min_pos_var_of_scope. If you see this, open an issue on the github or message me, SpaceEye.");}
         return scope.back()[0];
+    }
+    void prepare_to_return() {
+        auto loc_scope = StackScope{};
+        loc_scope.push_scope();
+        loc_scope.push_scope();
+        for (auto & _scope: scope) {
+            loc_scope.scope.back().insert(loc_scope.scope.back().end(),
+                                          _scope.begin(), _scope.end());
+        }
+        scope = loc_scope.scope;
     }
     int get_current_total() {
         int total = 0;
@@ -49,7 +60,6 @@ struct StackScope {
         }
         return total;
     }
-
     int get_total() {
         int total = 0;
         for (auto & _scope: scope) {
@@ -59,7 +69,6 @@ struct StackScope {
         }
         return total;
     }
-
     int get_pos(int id) {
         uint32_t pos = 0;
         for (auto & _scope: scope) {
@@ -74,9 +83,8 @@ struct StackScope {
 
         throw std::logic_error("Shouldn't happen. Bytecode compilation stage. get_pos. If you see this, open an issue on the github or message me, SpaceEye.");
     }
-
     StackScope()=default;
-    StackScope(const StackScope & st)= default;
+    StackScope(const StackScope &)= default;
 };
 
 struct FunctionPart {

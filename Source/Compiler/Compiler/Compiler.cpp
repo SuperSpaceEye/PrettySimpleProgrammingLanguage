@@ -394,6 +394,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 }
 
                 auto local_scope = StackScope(scope);
+                local_scope.prepare_to_return();
 
                 auto & ret_call = *static_cast<ReturnCall*>(node.get());
 
