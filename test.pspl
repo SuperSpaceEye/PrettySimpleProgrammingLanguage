@@ -66,7 +66,7 @@ fn void main() {
     #210
     print_num(while_loop_test(20));
     #55
-    #print_num(fib_test(10));
+    print_num(fib_test(10));
     #280010
     print_num(test1(test2(test2(test1(test1(8))))));
 

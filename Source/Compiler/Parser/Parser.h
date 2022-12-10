@@ -169,7 +169,7 @@ class Parser {
 
     static ASTCreationResult create_ast(TranspilerResult &t_result, bool debug);
     static void validate_ast(ASTCreationResult &ast_result);
-    static void show_ast(ASTCreationResult &ast_result, IdRegister &id_reg);
+    static void show_ast(std::vector<std::shared_ptr<BaseAction>> &roots, IdRegister &id_reg);
     static TreeResult extract_nested_functions(ASTCreationResult &ast_result);
 
     static int get_main_fn_idx(TreeResult &t_res, int main_id);
@@ -245,6 +245,8 @@ class Parser {
                                      std::shared_ptr<BaseAction> &prev_root);
     static void start_logic_block(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
                                   std::shared_ptr<BaseAction> &prev_root, int &do_not_push_scope);
+    static void validate_function_paths(TreeResult &tres);
+    static bool recursive_validate_function_path(std::shared_ptr<BaseAction> node);
 
 
     static void optimize_tree(TreeResult &tres, const Options &options);
@@ -256,8 +258,11 @@ public:
         auto ast = Parser::create_ast(t_result, options.debug.show_parser_output);
         Parser::validate_ast(ast);
         auto tree = Parser::extract_nested_functions(ast);
-        //TODO add additional validate of function paths
+        validate_function_paths(tree);
+
         optimize_tree(tree, options);
+        if (options.debug.show_optimized_tree) {show_ast(tree.object_roots, ast.reg);}
+
         return tree;
     }
 };

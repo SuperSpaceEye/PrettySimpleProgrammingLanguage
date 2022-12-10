@@ -87,7 +87,7 @@ switch (arg1_type) {\
 
 
 void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
-    while (cur < code.size()-1) {
+    while (cur < code.size()) {
         auto word = code[cur];
         switch (word) {
             case ByteCode::PUSH: {

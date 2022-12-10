@@ -150,8 +150,8 @@ void display_root(BaseAction *root, int indentation, IdRegister &reg) {
     display_root(root->next_action.get(), indentation, reg);
 }
 
-void Parser::show_ast(ASTCreationResult &ast_result, IdRegister &id_reg) {
-    for (auto root: ast_result.object_roots) {
+void Parser::show_ast(std::vector<std::shared_ptr<BaseAction>> &roots, IdRegister &id_reg) {
+    for (auto root: roots) {
         display_root(root.get(), 0, id_reg);
     }
     std::cout << "\n\n\n";

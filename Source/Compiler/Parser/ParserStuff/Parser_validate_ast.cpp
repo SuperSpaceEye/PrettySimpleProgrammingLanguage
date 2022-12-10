@@ -336,3 +336,37 @@ bool check_for_main(ASTCreationResult & ast_result) {
     if (!has_main) {return false;}
     return true;
 }
+
+void Parser::validate_function_paths(TreeResult &tres) {
+    for (const auto & root: tres.object_roots) {
+        auto node = root;
+        auto res = recursive_validate_function_path(node);
+        if (!res) {
+            throw std::logic_error("Function has a path without a return. "+ rcs(root->pos));
+        }
+    }
+}
+bool Parser::recursive_validate_function_path(std::shared_ptr<BaseAction> node) {
+    while (node != nullptr) {
+        switch (node->act_type) {
+            case ActionType::IfStatement: {
+                auto & if_act = *static_cast<IfStatement*>(node.get());
+
+                auto true_res = recursive_validate_function_path(if_act.true_branch);
+                bool false_res = false;
+                if (if_act.false_branch != nullptr) {
+                    false_res = recursive_validate_function_path(if_act.false_branch);
+                }
+
+                if (true_res && false_res) {
+                    return true;
+                }
+            }
+                break;
+            case ActionType::ReturnCall:
+                return true;
+        }
+        node = node->next_action;
+    }
+    return false;
+}

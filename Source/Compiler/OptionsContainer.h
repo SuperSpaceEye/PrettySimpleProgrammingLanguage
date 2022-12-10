@@ -29,8 +29,9 @@ struct Options {
     //debug options
     struct DebugOptions {
         bool show_transpiler_output = false;
-        bool show_parser_output = true;
-        bool show_compiler_output = true;
+        bool show_parser_output = false;
+        bool show_optimized_tree = false;
+        bool show_compiler_output = false;
     };
     DebugOptions debug{};
 };

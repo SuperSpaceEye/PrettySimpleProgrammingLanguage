@@ -25,7 +25,7 @@ ASTCreationResult Parser::create_ast(TranspilerResult &t_result, bool debug) {
         to_return.object_roots.emplace_back(beginning->next_action);
     }
 
-    if (debug) {show_ast(to_return, to_return.reg);}
+    if (debug) {show_ast(to_return.object_roots, to_return.reg);}
     return to_return;
 }
 
