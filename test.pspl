@@ -76,7 +76,7 @@ fn void main() {
 
 
     var uint a;
-    asgn(a, to_uint(0));
+    asgn(a, to_uint(1));
     if (a) {
         print_num(1);
     }

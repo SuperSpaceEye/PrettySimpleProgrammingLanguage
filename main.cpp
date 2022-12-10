@@ -53,7 +53,7 @@ std::vector<std::string> open_files(const std::vector<std::string>& file_paths) 
     for (auto & path_name: file_paths) {
         std::filesystem::path path{path_name};
         if (is_directory(path) || !exists(path)) {
-            std::cout << path << " is not included because it is either a directory or doesn't exist.";
+            std::cout << path << " is not included because it is either a directory or doesn't exist.\n";
             continue;
         }
         std::ifstream t(path);

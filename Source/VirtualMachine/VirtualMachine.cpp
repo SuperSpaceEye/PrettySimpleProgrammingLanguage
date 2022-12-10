@@ -268,8 +268,8 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
         case BuiltinIDS::PRINT:
             break;
         case BuiltinIDS::TO_INT: {
-            auto arg_val = get_4_num(stack, stack.size()-8);
-            auto arg_type = (VariableType)get_4_num(stack, stack.size()-4);
+            auto arg_type = (VariableType)get_4_num(stack, stack.size()-8);
+            auto arg_val = get_4_num(stack, stack.size()-4);
 
             arg_val = cast_to_type(arg_val, arg_type, VariableType::INT);
 
@@ -278,8 +278,8 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
         }
             break;
         case BuiltinIDS::TO_UINT: {
-            auto arg_val = get_4_num(stack, stack.size()-8);
-            auto arg_type = (VariableType)get_4_num(stack, stack.size()-4);
+            auto arg_type = (VariableType)get_4_num(stack, stack.size()-8);
+            auto arg_val = get_4_num(stack, stack.size()-4);
 
             arg_val = cast_to_type(arg_val, arg_type, VariableType::UINT);
 
@@ -288,8 +288,8 @@ void VirtualMachine::process_builtin(std::vector<ByteCode> &code) {
         }
             break;
         case BuiltinIDS::TO_FLOAT: {
-            auto arg_val = get_4_num(stack, stack.size()-8);
-            auto arg_type = (VariableType)get_4_num(stack, stack.size()-4);
+            auto arg_type = (VariableType)get_4_num(stack, stack.size()-8);
+            auto arg_val = get_4_num(stack, stack.size()-4);
 
             arg_val = cast_to_type(arg_val, arg_type, VariableType::FLOAT);
 
