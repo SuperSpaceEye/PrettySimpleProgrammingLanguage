@@ -354,7 +354,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 // generate code for true branch
                 auto true_br = if_st.true_branch;
-                do_not_push_scope++;
                 recursive_compile(part, local_scope, true_br, false, do_not_push_scope, 0, 0, stack_frame_nesting);
                 // goto to jump over the code of the false branch
                 main_part.emplace_back(ByteCode::GOTO);
@@ -367,7 +366,6 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 auto true_br_end = main_part.size();
                 // generate code for false branch
                 auto false_br = if_st.false_branch;
-                do_not_push_scope++;
                 recursive_compile(part, local_scope, false_br, false, do_not_push_scope, 0, 0, stack_frame_nesting);
                 uint32_t end_br_pos = main_part.size();
 

@@ -35,13 +35,13 @@ fn int test1(int n) {
     return(n);
 }
 
-fn void test5(int a) {
-    var int b;
-    var int c;
-    var int d;
-    asgn(b, 1);
-    asgn(c, 1);
-    asgn(d, 1);
+fn void test5(uint a) {
+    var uint b;
+    var uint c;
+    var uint d;
+    asgn(b, to_uint(1));
+    asgn(c, to_uint(1));
+    asgn(d, to_uint(1));
 
     if (a) {
         print_num(1);
@@ -74,14 +74,7 @@ fn void main() {
     #280010
     #print_num(test1(test2(test2(test1(test1(8))))));
 
-
-    var uint a;
-    asgn(a, to_uint(1));
-    if (a) {
-        print_num(1);
-    }
-
-    #test5(0);
+    test5(to_uint(1));
 
     return();
 }
