@@ -245,13 +245,19 @@ class Parser {
                                      std::shared_ptr<BaseAction> &prev_root);
     static void start_logic_block(ValidateScope &scope, std::shared_ptr<BaseAction> &root, std::vector<int> &ids, int &last_id,
                                   std::shared_ptr<BaseAction> &prev_root, int &do_not_push_scope);
+
+
+    static void optimize_tree(TreeResult &tres, const Options &options);
+    static void trim_unreachable(TreeResult & tres);
+    static bool recursive_trim_unreachable(std::shared_ptr<BaseAction> node);
 public:
 
     static TreeResult create_tree(TranspilerResult &t_result, const Options &options) {
-        //TODO reorder so that extract_nested is before validate
         auto ast = Parser::create_ast(t_result, options.debug.show_parser_output);
         Parser::validate_ast(ast);
-        auto tree = extract_nested_functions(ast);
+        auto tree = Parser::extract_nested_functions(ast);
+        //TODO add additional validate of function paths
+        optimize_tree(tree, options);
         return tree;
     }
 };

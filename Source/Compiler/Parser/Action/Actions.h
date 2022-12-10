@@ -36,6 +36,13 @@ struct WhileLoop: public BaseAction {
     std::shared_ptr<BaseAction> body;
 };
 
+struct ForLoop: public BaseAction {
+    std::shared_ptr<BaseAction> before_logic;
+    std::shared_ptr<BaseAction> expression;
+    std::shared_ptr<BaseAction> post_logic;
+    std::shared_ptr<BaseAction> body;
+};
+
 struct ReturnCall: public BaseAction {
     std::shared_ptr<BaseAction> argument = nullptr;
 };

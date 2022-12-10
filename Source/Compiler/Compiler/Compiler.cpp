@@ -209,7 +209,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                             //If nested function call, then just recursively process it, as returned value will be on
                             //top of the stack.
                             auto rec_arg = arg;
-                            recursive_compile(part, scope, rec_arg, false, do_not_push_scope, user_nested_fn_call,
+                            recursive_compile(part, scope, rec_arg, is_main, do_not_push_scope, user_nested_fn_call,
                                               function_call_nesting + 1, stack_frame_nesting);
                         }
                             break;
@@ -339,7 +339,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         break;
                     case ActionType::FunctionCall: {
                         auto arg = if_st.expression;
-                        recursive_compile(part, scope, arg, false, do_not_push_scope, 0, 1, stack_frame_nesting);
+                        recursive_compile(part, scope, arg, is_main, do_not_push_scope, 0, 1, stack_frame_nesting);
                     }
                         break;
                 }
@@ -354,7 +354,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 // generate code for true branch
                 auto true_br = if_st.true_branch;
-                recursive_compile(part, local_scope, true_br, false, do_not_push_scope, 0, 0, stack_frame_nesting);
+                recursive_compile(part, local_scope, true_br, is_main, do_not_push_scope, 0, 0, stack_frame_nesting);
                 // goto to jump over the code of the false branch
                 main_part.emplace_back(ByteCode::GOTO);
                 part.relative_gotos_inside_fn.emplace_back(main_part.size());
@@ -366,7 +366,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 auto true_br_end = main_part.size();
                 // generate code for false branch
                 auto false_br = if_st.false_branch;
-                recursive_compile(part, local_scope, false_br, false, do_not_push_scope, 0, 0, stack_frame_nesting);
+                recursive_compile(part, local_scope, false_br, is_main, do_not_push_scope, 0, 0, stack_frame_nesting);
                 uint32_t end_br_pos = main_part.size();
 
                 // changes pos of the failed expr goto to the end of true branch pos.
@@ -526,6 +526,7 @@ void Compiler::free_scope(StackScope &scope, std::vector<ByteCode> &bcode) {
 
 void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<int64_t> &delimiters) {
     int del_pos = 0;
+    int num_instructions = 0;
     for (int i = 0; i < code.size(); i++) {
         if (i >= delimiters[del_pos]) {
             std::cout << "\n";del_pos++;
@@ -593,7 +594,9 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
                 num+=9;
                 break;
         }
+        num_instructions++;
     }
+    std::cout << "Num Instructions: " << num_instructions << "\n";
 }
 
 std::vector<ByteCode> Compiler::compile_to_bytecode(std::vector<FunctionPart> &parts, const Options &options) {

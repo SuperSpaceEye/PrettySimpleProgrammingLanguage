@@ -10,6 +10,7 @@ struct Options {
         //TODO
         //batches separate pop commands into one command if they are directly connected
         bool batch_byte_words = true;
+        bool trim_unreachable = true;
     };
     OptimizationOptions optimization{};
 

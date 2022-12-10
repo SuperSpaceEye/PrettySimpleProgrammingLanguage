@@ -1,0 +1,20 @@
+fn void main() {
+    var uint a;
+    asgn(a, to_uint(0));
+
+    if (a) {
+        print_num(1);
+        return();
+    } else {
+        print_num(2);
+        return();
+    }
+
+    var int b;
+    var int c;
+    var int d;
+    var int e;
+    print_num(69);
+
+    return();
+}
