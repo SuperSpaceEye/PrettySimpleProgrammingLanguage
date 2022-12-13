@@ -531,6 +531,8 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
         if (i >= delimiters[del_pos]) {
             std::cout << "\n";del_pos++;
         }
+        //TODO num is kinda useless.
+//        std::cout << i << ' ';
         switch (code[i]) {
             case ByteCode::PUSH: {
                 std::cout << num << ". PUSH " << *((int32_t*)&code[++i]);
@@ -560,7 +562,7 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
             case ByteCode::COPY_PUSH:
                 std::cout << num << ". COPY_PUSH " << *((int32_t*)&code[++i]) << " "; i+=4;
                 std::cout << *((uint32_t*)&code[i]) << "\n"; i+=3;
-                num+=13;
+                num+=9;
                 break;
             case ByteCode::BUILTIN_CALL: {
                 std::cout << num << ". BUILTIN_CALL " << std::get<0>(builtin_functions_id_names[*((int32_t*)&code[++i])]) << "\n";
@@ -583,7 +585,7 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
                 std::cout << num << ". GET_ABSOLUTE_POS";
                 std::cout << " " << *((int32_t*)&code[++i]); i+=3;
                 std::cout << "\n";
-                num+=9;
+                num+=5;
                 break;
         }
         num_instructions++;
@@ -723,11 +725,7 @@ void Compiler::batch_byte_words(FunctionPart &part) {
                 }
             }
                 break;
-            //TODO do the same optimization for pop's?
-            case ByteCode::POP: {
-                cur += 5;
-            }
-                break;
+            case ByteCode::POP:              cur += 5;break;
             case ByteCode::SWAP:             cur+=13;break;
             case ByteCode::COPY_PUSH:        cur+=9;break;
             case ByteCode::BUILTIN_CALL:     cur+=5;break;

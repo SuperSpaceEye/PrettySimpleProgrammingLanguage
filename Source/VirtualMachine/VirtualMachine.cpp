@@ -87,8 +87,13 @@ switch (arg1_type) {\
 
 
 void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
+//    int counter = 0;
     while (cur < code.size()) {
         auto word = code[cur];
+//        counter++;
+//        if (counter == 389) {
+//            volatile int a = 10;
+//        }
         switch (word) {
             case ByteCode::PUSH: {
                 cur++;

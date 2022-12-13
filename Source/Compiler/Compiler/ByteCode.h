@@ -8,8 +8,7 @@
 // PUSH num value - adds {num} bytes to the stack with values set from bytecode itself
 // POP num - pops {num} bytes from the stack
 // SWAP pos1 pos2 num - swaps {num} bytes from positions
-// COPY_PUSH pos, num - pushes {num} bytes, and copies {num} bytes from
-//     stack[{pos} + stack_frames[stack_frames.size() - {offset}]]
+// COPY_PUSH pos, num - pushes {num} bytes, and copies {num} bytes
 // BUILTIN_CALL num_fn - calls builtin function. Arguments are gotten from stack.
 // GOTO pos - moves execution pointer to position in bytecode. If pos == UINT32_MAX, then stop execution and exit
 // COND_GOTO pos_false - gets 4 bytes from the top of the stack, if >0, then just continue executing, if == 0 then goto to pos_false
