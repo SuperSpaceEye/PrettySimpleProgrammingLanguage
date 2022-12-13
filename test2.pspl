@@ -1,13 +1,18 @@
-fn int add_50(int a) {
-    return(add(a, 50));
+fn int test2(int n) {return(n);}
+
+fn int test(int n) {
+    var uint a;
+
+    if (less_eq(a, to_uint(1))) {
+        print_num(10);
+        return(n);
+    }
+
+    var int d;
+    asgn(n, test(n));
+    return(n);
 }
 
 fn void main() {
-    var int a;
-    asgn(a, add(10, 50));
-    asgn(a, add(a, 50));
-    print_num(a);
-    print_num(add_50(a));
-
     return();
 }

@@ -629,6 +629,7 @@ std::pair<bool, uint32_t*> is_in_any(uint32_t pos, FunctionPart & part) {
 //after deletion of code the positions of values (and relative values themselves) are now point at wrong locations, and
 //must be fixed
 void norm_items(uint32_t start_pos, uint32_t removed, FunctionPart & part) {
+    //!!!!!!!!! Every ">" here should be ">" and not ">="
     if (!removed) { return;}
     for (auto & item: part.relative_gotos_inside_fn) {
         //fixing the number of the position of the value in code.
@@ -637,8 +638,8 @@ void norm_items(uint32_t start_pos, uint32_t removed, FunctionPart & part) {
         }
         //whenever or not the position of the value was fixed or not, we need
         //to check if the relative position needs to be fixed.
-        if (*(uint32_t*)&part.fn_code[item] >= start_pos) {
-            *(uint32_t *)&part.fn_code[item] -= removed;
+        if (*(uint32_t*)&part.fn_code[item] > start_pos) {
+            *(uint32_t*)&part.fn_code[item] -= removed;
         }
     }
     for (auto & litem: part.parent_end_of_fn_calls) {
@@ -717,19 +718,19 @@ void Compiler::batch_byte_words(FunctionPart &part) {
         switch (word) {
             case ByteCode::PUSH: {
                 cur++;
-                auto num = *(uint32_t*)&part.fn_code[cur];
+                auto num = *(uint32_t*)&bcode[cur];
                 cur+=4;
 
                 auto res = is_in_any(cur, part);
                 if (res.first) {additional_data.emplace_back(res.second, data.size());}
 
                 for (int i = 0; i < num; i++) {
-                    data.emplace_back((uint8_t)part.fn_code[cur]);
+                    data.emplace_back((uint8_t)bcode[cur]);
                     cur++;
                 }
             }
                 break;
-            case ByteCode::POP:              cur += 5;break;
+            case ByteCode::POP:              cur+=5;break;
             case ByteCode::SWAP:             cur+=13;break;
             case ByteCode::COPY_PUSH:        cur+=9;break;
             case ByteCode::BUILTIN_CALL:     cur+=5;break;
