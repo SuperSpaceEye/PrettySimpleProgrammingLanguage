@@ -118,8 +118,8 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 auto amount = get_4_num(code, cur);
                 cur+=4;
                 for (int i = 0; i < amount; i++) {
-                    std::swap(stack[i+pos1+stack_frames.back()],
-                              stack[i+pos2+stack_frames.back()]);
+                    std::swap(stack[stack.size()-pos1+i],
+                              stack[stack.size()-pos2+i]);
                 }
             }
                 break;
@@ -129,12 +129,11 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 cur+=4;
                 auto amount = get_4_num(code, cur);
                 cur+=4;
-                auto offset = get_4_num(code, cur);
-                cur+=4;
-                stack.reserve(stack.size()+amount);
+                auto size = stack.size();
 
+                stack.resize(stack.size()+amount);
                 for (int i = 0; i < amount; i++) {
-                    stack.emplace_back(stack[pos + i + stack_frames[stack_frames.size()-offset-1]]);
+                    stack[size+i] = stack[size-pos+i];
                 }
             }
                 break;
@@ -168,22 +167,12 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 cur = pos;
             }
                 break;
-            case ByteCode::PUSH_STACK_FRAME:
-                stack_frames.emplace_back(stack.size());
-                cur++;
-                break;
-            case ByteCode::POP_STACK_FRAME:
-                stack_frames.pop_back();
-                cur++;
-                break;
             case ByteCode::GET_ABSOLUTE_POS: {
                 cur++;
                 auto rel_var_pos = get_4_num(code, cur);
                 cur+=4;
-                auto offset = get_4_num(code, cur);
-                cur+=4;
 
-                auto abs_pos = rel_var_pos + stack_frames[stack_frames.size()-offset-1];
+                auto abs_pos = stack.size() - rel_var_pos;
 
                 stack.resize(stack.size()+4);
 

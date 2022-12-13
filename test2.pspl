@@ -1,20 +1,13 @@
+fn int add_50(int a) {
+    return(add(a, 50));
+}
+
 fn void main() {
-    var uint a;
-    asgn(a, to_uint(0));
-
-    if (a) {
-        print_num(1);
-        return();
-    } else {
-        print_num(2);
-        return();
-    }
-
-    var int b;
-    var int c;
-    var int d;
-    var int e;
-    print_num(69);
+    var int a;
+    asgn(a, add(10, 50));
+    asgn(a, add(a, 50));
+    print_num(a);
+    print_num(add_50(a));
 
     return();
 }

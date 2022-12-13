@@ -20,8 +20,9 @@ int main(int argc, char *argv[]) {
     Options options{};
     auto arguments = read_arguments(argc, argv);
 
-//    options.optimization.trim_unreachable = false;
-//    options.optimization.batch_byte_words = false;
+    options.optimization.trim_unreachable = false;
+    options.optimization.batch_byte_words = false;
+    options.debug.show_compiler_output = true;
 
     auto data = open_files(std::vector<std::string>({"/home/spaceeye/CLionProjects/AnotherProgrammingLanguage/test.pspl"}));
 

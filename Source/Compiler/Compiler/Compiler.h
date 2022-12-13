@@ -70,18 +70,19 @@ struct StackScope {
         }
         return total;
     }
-    int get_pos(int id) {
+    int get_reverse_pos(int id) {
         uint32_t pos = 0;
-        for (auto & _scope: scope) {
-            for (auto & item: _scope) {
+        for (int si = scope.size()-1; si >= 0; si--) {
+            auto & _scope = scope[si];
+            for (int ii = _scope.size()-1; ii >= 0; ii--) {
+                auto & item = _scope[ii];
                 if (std::get<1>(item) == id) {
-                    return pos;
+                    return pos + std::get<0>(item);
                 }
 
                 pos += std::get<0>(item);
             }
         }
-
         throw std::logic_error("Shouldn't happen. Bytecode compilation stage. get_pos. If you see this, open an issue on the github or message me, SpaceEye.");
     }
     StackScope()=default;
