@@ -287,6 +287,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
             case ActionType::WhileLoop: {
                 auto & while_act = *static_cast<WhileLoop*>(node.get());
 
+                main_part.emplace_back(ByteCode::NOOP);
                 //save pos value of start to return if expr is true
                 uint32_t while_loop_start_pos = main_part.size();
 
@@ -587,6 +588,9 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
                 std::cout << "\n";
                 num+=5;
                 break;
+            case ByteCode::NOOP:
+                std::cout << num << ". NOOP\n";
+                num++;
         }
         num_instructions++;
     }
@@ -733,6 +737,9 @@ void Compiler::batch_byte_words(FunctionPart &part) {
             case ByteCode::COND_GOTO:        cur+=5;break;
             case ByteCode::REL_GOTO:         cur++;break;
             case ByteCode::GET_ABSOLUTE_POS: cur+=5;break;
+            case ByteCode::NOOP:
+                cur++;
+                break;
         }
     }
 }

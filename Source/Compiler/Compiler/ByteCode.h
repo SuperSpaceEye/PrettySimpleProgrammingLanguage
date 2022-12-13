@@ -24,6 +24,7 @@ enum class ByteCode:uint8_t {
     COND_GOTO,
     REL_GOTO,
     GET_ABSOLUTE_POS,
+    NOOP,
 };
 
 #endif //ANOTHERPROGRAMMINGLANGUAGE_BYTECODE_H

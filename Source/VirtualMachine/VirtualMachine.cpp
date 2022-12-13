@@ -184,6 +184,7 @@ void VirtualMachine::execute(std::vector<ByteCode> &code, bool debug) {
                 *((uint32_t*)&stack[stack.size()-4]) = abs_pos;
             }
                 break;
+            case ByteCode::NOOP: cur++; break;
             default:
                 throw std::logic_error("VM met an unknown word. This is probably a bug in the compiler. If you see this, open an issue on the github or message me, SpaceEye.");
         }
