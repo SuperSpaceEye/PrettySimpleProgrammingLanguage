@@ -21,8 +21,7 @@ int main(int argc, char *argv[]) {
     auto arguments = read_arguments(argc, argv);
 
 //    options.optimization.trim_unreachable = false;
-//    options.optimization.batch_byte_words = false;
-
+//    options.optimization.batch_push_commands = false;
 
     options.debug.show_compiler_output = true;
 

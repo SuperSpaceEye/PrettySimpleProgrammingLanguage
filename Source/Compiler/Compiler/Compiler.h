@@ -109,12 +109,12 @@ struct FunctionPart {
 };
 
 class Compiler {
-    static std::vector<FunctionPart> compile_(TreeResult &tree_res);
+    static std::vector<FunctionPart> compile_(TreeResult &tree_res, const Options &options);
     static void display_code(std::vector<ByteCode> &code, int &num, std::vector<int64_t> &delimiters);
     static void
     recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
                       int &do_not_push_scope, int user_nested_fn_call, int function_call_nesting,
-                      int stack_frame_nesting);
+                      int stack_frame_nesting, const Options &options);
     static void free_scope(StackScope &scope, std::vector<ByteCode> &bcode);
 
     static void
@@ -122,7 +122,7 @@ class Compiler {
                                              bool &popped);
 
     static std::vector<ByteCode> compile_to_bytecode(std::vector<FunctionPart> &parts, const Options &options);
-    static void batch_byte_words(FunctionPart & part);
+    static void batch_push_commands(FunctionPart & part);
     static void link_code_parts(std::vector<FunctionPart> &parts);
     static std::vector<ByteCode> concat_code(std::vector<FunctionPart> &parts);
 public:

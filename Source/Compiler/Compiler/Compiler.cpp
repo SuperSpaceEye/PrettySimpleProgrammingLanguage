@@ -8,7 +8,7 @@ std::vector<ByteCode> Compiler::compile(const std::vector<std::string> &str_data
     if (options.debug.show_transpiler_output) {Transpiler::display_tokens(res);}
 
     auto tree = ActionTreeCreator::create_tree(res, options);
-    auto parts = compile_(tree);
+    auto parts = compile_(tree, options);
     auto code = compile_to_bytecode(parts, options);
 
     if (options.debug.show_compiler_output) {
@@ -63,7 +63,7 @@ void put_8_num(std::vector<ByteCode> & bcode, uint64_t num) {
     *((uint64_t *)&bcode[pos]) = num;
 }
 
-std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
+std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res, const Options &options) {
     std::vector<FunctionPart> code_parts{};
 
     for (int i = 0; i < tree_res.object_roots.size(); i++) {
@@ -95,7 +95,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
         auto node = tree_res.object_roots[i];
         code_parts.emplace_back();
         code_parts.back().id = static_cast<FunctionDeclaration*>(node.get())->fn_id;
-        recursive_compile(code_parts.back(), scope, node, i == tree_res.main_idx, do_not_push, 0, 0, 0);
+        recursive_compile(code_parts.back(), scope, node, i == tree_res.main_idx, do_not_push, 0, 0, 0, options);
     }
 
     //so that main function would be the first.
@@ -111,7 +111,7 @@ std::vector<FunctionPart> Compiler::compile_(TreeResult &tree_res) {
 void
 Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_ptr<BaseAction> &node, bool is_main,
                             int &do_not_push_scope, int user_nested_fn_call, int function_call_nesting,
-                            int stack_frame_nesting) {
+                            int stack_frame_nesting, const Options &options) {
     auto & main_part = part.fn_code;
     while (node != nullptr) {
         switch (node->act_type) {
@@ -209,7 +209,7 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                             //top of the stack.
                             auto rec_arg = arg;
                             recursive_compile(part, scope, rec_arg, is_main, do_not_push_scope, user_nested_fn_call,
-                                              function_call_nesting + 1, stack_frame_nesting);
+                                              function_call_nesting + 1, stack_frame_nesting, options);
                         }
                             break;
                         //If number const, then just push value saved in code to stack.
@@ -287,12 +287,13 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
             case ActionType::WhileLoop: {
                 auto & while_act = *static_cast<WhileLoop*>(node.get());
 
-                main_part.emplace_back(ByteCode::NOOP);
+                if (options.optimization.batch_push_commands) {main_part.emplace_back(ByteCode::NOOP);}
                 //save pos value of start to return if expr is true
                 uint32_t while_loop_start_pos = main_part.size();
 
                 //generate code for expression
-                recursive_compile(part, scope, while_act.expression, is_main, do_not_push_scope, 0, 1, stack_frame_nesting);
+                recursive_compile(part, scope, while_act.expression, is_main, do_not_push_scope, 0, 1,
+                                  stack_frame_nesting, options);
 
                 //check expression
                 main_part.emplace_back(ByteCode::COND_GOTO);
@@ -305,7 +306,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 auto local_scope = StackScope{scope};
                 //generate code for body of while loop
-                recursive_compile(part, local_scope, while_act.body, is_main, do_not_push_scope, 0, 0, stack_frame_nesting);
+                recursive_compile(part, local_scope, while_act.body, is_main, do_not_push_scope, 0, 0,
+                                  stack_frame_nesting, options);
 
                 //go back to the start
                 main_part.emplace_back(ByteCode::GOTO);
@@ -337,7 +339,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                         break;
                     case ActionType::FunctionCall: {
                         auto arg = if_st.expression;
-                        recursive_compile(part, scope, arg, is_main, do_not_push_scope, 0, 1, stack_frame_nesting);
+                        recursive_compile(part, scope, arg, is_main, do_not_push_scope, 0, 1, stack_frame_nesting,
+                                          options);
                     }
                         break;
                 }
@@ -352,7 +355,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                 // generate code for true branch
                 auto true_br = if_st.true_branch;
-                recursive_compile(part, local_scope, true_br, is_main, do_not_push_scope, 0, 0, stack_frame_nesting);
+                recursive_compile(part, local_scope, true_br, is_main, do_not_push_scope, 0, 0, stack_frame_nesting,
+                                  options);
                 // goto to jump over the code of the false branch
                 main_part.emplace_back(ByteCode::GOTO);
                 part.relative_gotos_inside_fn.emplace_back(main_part.size());
@@ -364,7 +368,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
                 auto true_br_end = main_part.size();
                 // generate code for false branch
                 auto false_br = if_st.false_branch;
-                recursive_compile(part, local_scope, false_br, is_main, do_not_push_scope, 0, 0, stack_frame_nesting);
+                recursive_compile(part, local_scope, false_br, is_main, do_not_push_scope, 0, 0, stack_frame_nesting,
+                                  options);
                 uint32_t end_br_pos = main_part.size();
 
                 // changes pos of the failed expr goto to the end of true branch pos.
@@ -418,7 +423,8 @@ Compiler::recursive_compile(FunctionPart &part, StackScope &scope, std::shared_p
 
                             auto in_arg = ret_call.argument;
                             recursive_compile(part, local_scope, in_arg, is_main, do_not_push_scope,
-                                              user_nested_fn_call, function_call_nesting + 1, stack_frame_nesting);
+                                              user_nested_fn_call, function_call_nesting + 1, stack_frame_nesting,
+                                              options);
                         }
                             break;
                         case ActionType::StringConst:
@@ -598,7 +604,7 @@ void Compiler::display_code(std::vector<ByteCode> &code, int &num, std::vector<i
 }
 
 std::vector<ByteCode> Compiler::compile_to_bytecode(std::vector<FunctionPart> &parts, const Options &options) {
-    if (options.optimization.batch_byte_words) {for (auto &part: parts) { batch_byte_words(part); }}
+    if (options.optimization.batch_push_commands) {for (auto &part: parts) { batch_push_commands(part); }}
 
     link_code_parts(parts);
 
@@ -626,8 +632,8 @@ std::pair<bool, uint32_t*> is_in_any(uint32_t pos, FunctionPart & part) {
     return {false, nullptr};
 }
 
-//after deletion of code the positions of values (and relative values themselves) are now point at wrong locations, and
-//must be fixed
+// Fixes positions of values (and relative values themselves) that point to wrong location after batching of push commands.
+// Also removes NOOP commands.
 void norm_items(uint32_t start_pos, uint32_t removed, FunctionPart & part) {
     //!!!!!!!!! Every ">" here should be ">" and not ">="
     if (!removed) { return;}
@@ -661,7 +667,7 @@ void norm_items(uint32_t start_pos, uint32_t removed, FunctionPart & part) {
     }
 }
 
-void Compiler::batch_byte_words(FunctionPart &part) {
+void Compiler::batch_push_commands(FunctionPart &part) {
     uint32_t cur = 0;
 
     ByteCode last_command = ByteCode::REL_GOTO;
@@ -739,7 +745,8 @@ void Compiler::batch_byte_words(FunctionPart &part) {
             case ByteCode::REL_GOTO:         cur++;break;
             case ByteCode::GET_ABSOLUTE_POS: cur+=5;break;
             case ByteCode::NOOP:
-                cur++;
+                bcode.erase(bcode.begin() + cur);
+                norm_items(cur, 1, part);
                 break;
         }
     }
