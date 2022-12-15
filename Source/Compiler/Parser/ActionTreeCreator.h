@@ -28,10 +28,11 @@ class ActionTreeCreator {
 public:
     static TreeResult create_tree(TranspilerResult &t_result, const Options &options) {
         auto ast = TreeCreator::create_ast(t_result, options.debug.show_parser_output);
-        if (options.debug.show_parser_output) {show_ast(ast.object_roots, ast.reg);}
+//        if (options.debug.show_parser_output) {show_ast(ast.object_roots, ast.reg);}
 
-        TreeValidator::validate_ast(ast);
+        TreeValidator::validate_ast(ast, options);
         auto tree = extract_nested_functions(ast);
+        if (options.debug.show_parser_output) {show_ast(tree.object_roots, ast.reg);}
         TreeValidator::validate_function_paths(tree);
 
         TreeOptimizer::optimize_tree(tree, options);

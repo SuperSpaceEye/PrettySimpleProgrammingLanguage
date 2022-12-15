@@ -33,12 +33,12 @@ int main(int argc, char *argv[]) {
     }
 
     std::vector<ByteCode> code;
-    try {
+//    try {
         code = Compiler::compile(data, options);
-    } catch (const std::exception & e) {
-        std::cout << "Compiler has failed to compile the code. The exception:\n" << e.what();
-        return 0;
-    }
+//    } catch (const std::exception & e) {
+//        std::cout << "Compiler has failed to compile the code. The exception:\n" << e.what();
+//        return 0;
+//    }
 
     VirtualMachine vm{};
 

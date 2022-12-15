@@ -14,7 +14,7 @@
 //row col string
 inline std::string rcs(std::pair<int, int> pos) {
     return "Row " + std::to_string(pos.first) +
-           " Col " + std::to_string(pos.second) + ".";
+           " Col " + std::to_string(pos.second) + ".\n";
 }
 
 inline std::string type_to_str(VariableType type) {
